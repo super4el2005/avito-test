@@ -22,7 +22,7 @@ import { useForm } from '@mantine/form';
 
 import { useQuery } from '@tanstack/react-query';
 
-import { useDeferredValue, useMemo, useTransition } from 'react';
+import { useDeferredValue, useTransition } from 'react';
 
 import { MdFormatListBulleted, MdGridView, MdInfo, MdOutlineClear, MdSearch } from 'react-icons/md';
 
@@ -65,16 +65,19 @@ export default function () {
   const [sortColumn = 'createdAt', sortDirection = 'asc'] = sortValue.split(':');
   const page = Math.max(1, Number(deferredSearchState.page) || 1);
   const categories = deferredSearchState.categories.join(',');
+  const limit = String(LIMIT_ADS);
+  const skip = String((page - 1) * LIMIT_ADS);
+  const needsRevision = String(deferredSearchState.needsRevision);
 
   const getAdsQuery = useQuery({
-    queryKey: ['ads', deferredSearchState],
+    queryKey: ['ads', deferredSearchState.q, categories, page, sortColumn, sortDirection, deferredSearchState.needsRevision],
     queryFn: ({ signal }) => {
       const parsedQuery = ItemsGetInQuerySchema.parse({
         q: deferredSearchState.q,
         categories,
-        limit: String(LIMIT_ADS),
-        skip: String((page - 1) * LIMIT_ADS),
-        needsRevision: String(deferredSearchState.needsRevision),
+        limit,
+        skip,
+        needsRevision,
         sortColumn,
         sortDirection,
       });
@@ -106,7 +109,7 @@ export default function () {
 
   const totalAds = getAdsQuery.data?.data.total ?? 0;
   const totalPagingPages = Math.ceil(totalAds / LIMIT_ADS);
-  const ads = useMemo(() => getAdsQuery.data?.data.items ?? [], [getAdsQuery.data?.data.items]);
+  const ads = getAdsQuery.data?.data.items ?? [];
 
   const isDataLoading = getAdsQuery.isPlaceholderData || (getAdsQuery.isLoading && !getAdsQuery.data);
   const isFullyForm = form.values.categories.length || form.values.needsRevision || form.values.q;

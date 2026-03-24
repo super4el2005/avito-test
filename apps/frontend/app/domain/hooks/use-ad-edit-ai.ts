@@ -12,13 +12,21 @@ type UseAdEditAiParams = {
   values: ItemEditFormValues;
 };
 
+type UseAdEditAiResult = Readonly<{
+  priceAiState: ReturnType<typeof useAsyncPopoverRequest<string>>;
+  descriptionAiState: ReturnType<typeof useAsyncPopoverRequest<string>>;
+  descriptionAiBeforeText: string;
+  aiSuggestedPrice: number | null;
+  chatContext: ChatContextRef;
+}>;
+
 export function useAdEditAi({ id, values }: UseAdEditAiParams) {
   const priceAiState = useAsyncPopoverRequest<string>({
     mutationFn: async () => {
       const res = await aiSuggestPrice({
         title: values.title,
         category: values.category,
-        params: (values.params ?? {}) as Record<string, unknown>,
+        params: values.params,
         description: values.description || undefined,
       });
       return res.text;
@@ -34,7 +42,7 @@ export function useAdEditAi({ id, values }: UseAdEditAiParams) {
       const res = await aiSuggestDescription({
         title: values.title,
         category: values.category,
-        params: (values.params ?? {}) as Record<string, unknown>,
+        params: values.params,
         description: values.description || undefined,
       });
       return res.text;
@@ -62,5 +70,5 @@ export function useAdEditAi({ id, values }: UseAdEditAiParams) {
     descriptionAiBeforeText,
     aiSuggestedPrice,
     chatContext,
-  };
+  } satisfies UseAdEditAiResult;
 }

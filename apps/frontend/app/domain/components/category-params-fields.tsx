@@ -12,7 +12,7 @@ import {
   ELECTRONICS_TYPE_OPTIONS,
   REAL_ESTATE_TYPE_OPTIONS,
 } from '../models/constants';
-import type { Category, ParamsAuto, ParamsElectronics, ParamsRealEstate } from '../models/types';
+import type { Category, ItemEditFormValues, ParamsAuto, ParamsElectronics, ParamsRealEstate } from '../models/types';
 
 export type WarningInputStyles = {
   input: {
@@ -21,8 +21,8 @@ export type WarningInputStyles = {
 };
 
 type CategoryParamsProps = {
-  params: Record<string, unknown>;
-  setParams: (next: Record<string, unknown>) => void;
+  params: ItemEditFormValues['params'];
+  setParams: (next: ItemEditFormValues['params']) => void;
   maybeWarnIfEmpty: (isRequired: boolean, value: unknown) => WarningInputStyles | undefined;
 };
 

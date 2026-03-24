@@ -1,7 +1,7 @@
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, type UseMutationResult } from '@tanstack/react-query';
 
 import { useCallback, useMemo, useRef } from 'react';
 
@@ -23,6 +23,16 @@ type UseAdEditFormModelParams = {
   item: ItemDetailsResponse;
   warningStyles: WarningInputStyles;
 };
+
+type UseAdEditFormModelResult = Readonly<{
+  form: ReturnType<typeof useForm<ItemEditFormValues>>;
+  maybeWarnIfEmpty: (isRequired: boolean, value: unknown) => WarningInputStyles | undefined;
+  setCategoryParams: (next: ItemEditFormValues['params']) => void;
+  categoryOptions: ReadonlyArray<{ value: Category; label: string }>;
+  updateAdMutation: UseMutationResult<unknown, Error, ItemEditFormValues, unknown>;
+  requiredOk: boolean;
+  onCategoryChange: (value: string | null) => void;
+}>;
 
 export function useAdEditFormModel({ id, item, warningStyles }: UseAdEditFormModelParams) {
   const navigate = useNavigate();
@@ -54,8 +64,8 @@ export function useAdEditFormModel({ id, item, warningStyles }: UseAdEditFormMod
   );
 
   const setCategoryParams = useCallback(
-    (next: Record<string, unknown>) => {
-      form.setFieldValue('params', next as ItemEditFormValues['params']);
+    (next: ItemEditFormValues['params']) => {
+      form.setFieldValue('params', next);
     },
     [form],
   );
@@ -91,10 +101,7 @@ export function useAdEditFormModel({ id, item, warningStyles }: UseAdEditFormMod
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['ads'] });
-      await queryClient.fetchQuery({
-        queryKey: ['ad', id],
-        queryFn: ({ signal }) => apiAds.get<ItemDetailsResponse>(`/items/${id}`, { signal }),
-      });
+      await queryClient.invalidateQueries({ queryKey: ['ad', id] });
 
       notifications.show({
         position: 'top-right',
@@ -143,5 +150,5 @@ export function useAdEditFormModel({ id, item, warningStyles }: UseAdEditFormMod
     updateAdMutation,
     requiredOk,
     onCategoryChange,
-  };
+  } satisfies UseAdEditFormModelResult;
 }

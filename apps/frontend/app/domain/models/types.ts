@@ -20,21 +20,21 @@ export type ItemEditFormValues =
       title: string;
       price: number | null;
       description: string;
-      params: Record<string, unknown>;
+      params: ParamsAuto;
     }
   | {
       category: 'real_estate';
       title: string;
       price: number | null;
       description: string;
-      params: Record<string, unknown>;
+      params: ParamsRealEstate;
     }
   | {
       category: 'electronics';
       title: string;
       price: number | null;
       description: string;
-      params: Record<string, unknown>;
+      params: ParamsElectronics;
     };
 
 export type SortFormValue = `${ItemSortColumn}:${SortDirection}`;

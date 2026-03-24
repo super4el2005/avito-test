@@ -5,7 +5,7 @@ import { useMutation } from '@tanstack/react-query';
 
 import { diffWordsWithSpace } from 'diff';
 
-import { memo, type ReactNode, useMemo, useState } from 'react';
+import { memo, type ReactNode, useCallback, useMemo, useState } from 'react';
 
 import { MdChatBubbleOutline, MdLightbulbOutline, MdOutlineClear } from 'react-icons/md';
 
@@ -20,7 +20,7 @@ export type ChatContextRef = {
   id: string;
   title: string;
   category: Category;
-  params: unknown;
+  params: Record<string, unknown>;
   price: number | null;
   description?: string;
 };
@@ -144,7 +144,7 @@ export const AiChatWidget = memo(function AiChatWidget({ itemContext }: { itemCo
             id: itemContext.id,
             title: itemContext.title,
             category: itemContext.category,
-            params: itemContext.params as Record<string, unknown>,
+            params: itemContext.params,
             price: itemContext.price,
             description: itemContext.description,
           },
@@ -167,6 +167,20 @@ export const AiChatWidget = memo(function AiChatWidget({ itemContext }: { itemCo
       ]);
     },
   });
+
+  const sendChatMessage = useCallback(() => {
+    const trimmed = chatDraft.trim();
+    if (!trimmed) return;
+
+    const userMessage: AiChatMessage = {
+      role: 'user',
+      content: trimmed,
+    };
+    const nextMessages = [...chatMessages, userMessage];
+    setChatMessages(nextMessages);
+    setChatDraft('');
+    chatMutation.mutate(nextMessages);
+  }, [chatDraft, chatMessages, chatMutation]);
 
   return (
     <Popover
@@ -208,30 +222,7 @@ export const AiChatWidget = memo(function AiChatWidget({ itemContext }: { itemCo
             <Paper withBorder radius="md" p="sm">
               <Stack gap="sm">
                 <ScrollArea h={260} offsetScrollbars>
-                  <Stack gap="xs">
-                    {chatMessages.length === 0 ? (
-                      <Text c="dimmed">Задайте уточняющий вопрос по этому объявлению — контекст передаётся автоматически.</Text>
-                    ) : (
-                      chatMessages.map((m, idx) => (
-                        <Group key={idx} justify={m.role === 'user' ? 'flex-end' : 'flex-start'}>
-                          <Paper
-                            withBorder
-                            radius="md"
-                            p="sm"
-                            style={{
-                              maxWidth: 320,
-                              background: m.role === 'user' ? 'rgba(34, 139, 230, 0.08)' : undefined,
-                            }}
-                          >
-                            <Text fw={600} size="xs" c="dimmed" mb={4}>
-                              {m.role === 'user' ? 'Вы' : 'AI'}
-                            </Text>
-                            <Text style={{ whiteSpace: 'pre-wrap' }}>{m.content}</Text>
-                          </Paper>
-                        </Group>
-                      ))
-                    )}
-                  </Stack>
+                  <ChatMessagesList messages={chatMessages} />
                 </ScrollArea>
 
                 <Group align="flex-end" wrap="nowrap">
@@ -246,16 +237,7 @@ export const AiChatWidget = memo(function AiChatWidget({ itemContext }: { itemCo
                   <Button
                     loading={chatMutation.isPending}
                     disabled={!chatDraft.trim()}
-                    onClick={() => {
-                      const userMessage: AiChatMessage = {
-                        role: 'user',
-                        content: chatDraft.trim(),
-                      };
-                      const next = [...chatMessages, userMessage];
-                      setChatMessages(next);
-                      setChatDraft('');
-                      chatMutation.mutate(next);
-                    }}
+                    onClick={sendChatMessage}
                   >
                     Отправить
                   </Button>
@@ -266,5 +248,38 @@ export const AiChatWidget = memo(function AiChatWidget({ itemContext }: { itemCo
         </Popover.Dropdown>
       )}
     </Popover>
+  );
+});
+
+const ChatMessagesList = memo(function ChatMessagesList({ messages }: { messages: readonly AiChatMessage[] }) {
+  if (messages.length === 0) {
+    return (
+      <Stack gap="xs">
+        <Text c="dimmed">Задайте уточняющий вопрос по этому объявлению — контекст передаётся автоматически.</Text>
+      </Stack>
+    );
+  }
+
+  return (
+    <Stack gap="xs">
+      {messages.map((message, idx) => (
+        <Group key={idx} justify={message.role === 'user' ? 'flex-end' : 'flex-start'}>
+          <Paper
+            withBorder
+            radius="md"
+            p="sm"
+            style={{
+              maxWidth: 320,
+              background: message.role === 'user' ? 'rgba(34, 139, 230, 0.08)' : undefined,
+            }}
+          >
+            <Text fw={600} size="xs" c="dimmed" mb={4}>
+              {message.role === 'user' ? 'Вы' : 'AI'}
+            </Text>
+            <Text style={{ whiteSpace: 'pre-wrap' }}>{message.content}</Text>
+          </Paper>
+        </Group>
+      ))}
+    </Stack>
   );
 });

@@ -17,7 +17,7 @@ import {
 
 import { useQuery } from '@tanstack/react-query';
 
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import { MdInfo } from 'react-icons/md';
 
@@ -58,6 +58,32 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
     id,
     values: adEditFormModel.form.values,
   });
+
+  const closePricePopover = useCallback(() => {
+    adEditAi.priceAiState.setIsOpen(false);
+  }, [adEditAi.priceAiState]);
+
+  const applySuggestedPrice = useCallback(() => {
+    if (adEditAi.aiSuggestedPrice !== null) {
+      adEditFormModel.form.setFieldValue('price', adEditAi.aiSuggestedPrice);
+    }
+    adEditAi.priceAiState.setIsOpen(false);
+  }, [adEditAi.aiSuggestedPrice, adEditAi.priceAiState, adEditFormModel.form]);
+
+  const closeDescriptionPopover = useCallback(() => {
+    adEditAi.descriptionAiState.setIsOpen(false);
+  }, [adEditAi.descriptionAiState]);
+
+  const applySuggestedDescription = useCallback(() => {
+    adEditFormModel.form.setFieldValue('description', adEditAi.descriptionAiState.data ?? '');
+    adEditAi.descriptionAiState.setIsOpen(false);
+  }, [adEditAi.descriptionAiState, adEditFormModel.form]);
+
+  const submitEditForm = useCallback(() => {
+    const result = adEditFormModel.form.validate();
+    if (result.hasErrors) return;
+    adEditFormModel.updateAdMutation.mutate(adEditFormModel.form.values);
+  }, [adEditFormModel.form, adEditFormModel.updateAdMutation]);
 
   return (
     <>
@@ -114,17 +140,14 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
                   buttonLabel="Узнать рыночную цену"
                 >
                   {adEditAi.priceAiState.error ? (
-                    <AiPopoverError message={adEditAi.priceAiState.error} onClose={() => adEditAi.priceAiState.setIsOpen(false)} />
+                    <AiPopoverError message={adEditAi.priceAiState.error} onClose={closePricePopover} />
                   ) : (
                     <>
                       <Title order={5}>Ответ AI:</Title>
                       <Text style={{ whiteSpace: 'pre-wrap' }}>{adEditAi.priceAiState.data ?? ''}</Text>
                       <AiPopoverActions
-                        onApply={() => {
-                          if (adEditAi.aiSuggestedPrice !== null) adEditFormModel.form.setFieldValue('price', adEditAi.aiSuggestedPrice);
-                          adEditAi.priceAiState.setIsOpen(false);
-                        }}
-                        onClose={() => adEditAi.priceAiState.setIsOpen(false)}
+                        onApply={applySuggestedPrice}
+                        onClose={closePricePopover}
                         isApplyDisabled={adEditAi.aiSuggestedPrice === null}
                       />
                     </>
@@ -141,7 +164,7 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
             <Container ml={0} w={600} p={0}>
               <CategoryParamsFields
                 category={adEditFormModel.form.values.category}
-                params={(adEditFormModel.form.values.params ?? {}) as Record<string, unknown>}
+                params={adEditFormModel.form.values.params}
                 setParams={adEditFormModel.setCategoryParams}
                 maybeWarnIfEmpty={adEditFormModel.maybeWarnIfEmpty}
               />
@@ -175,7 +198,7 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
               buttonLabel={adEditFormModel.form.values.description.trim() ? 'Улучшить описание' : 'Придумать описание'}
             >
               {adEditAi.descriptionAiState.error ? (
-                <AiPopoverError message={adEditAi.descriptionAiState.error} onClose={() => adEditAi.descriptionAiState.setIsOpen(false)} />
+                <AiPopoverError message={adEditAi.descriptionAiState.error} onClose={closeDescriptionPopover} />
               ) : (
                 <>
                   <Title order={5}>Ответ AI:</Title>
@@ -204,11 +227,8 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
                     </>
                   )}
                   <AiPopoverActions
-                    onApply={() => {
-                      adEditFormModel.form.setFieldValue('description', adEditAi.descriptionAiState.data ?? '');
-                      adEditAi.descriptionAiState.setIsOpen(false);
-                    }}
-                    onClose={() => adEditAi.descriptionAiState.setIsOpen(false)}
+                    onApply={applySuggestedDescription}
+                    onClose={closeDescriptionPopover}
                     isApplyDisabled={!adEditAi.descriptionAiState.data}
                   />
                 </>
@@ -218,11 +238,7 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
 
           <Group justify="flex-start" mt="sm">
             <Button
-              onClick={() => {
-                const result = adEditFormModel.form.validate();
-                if (result.hasErrors) return;
-                adEditFormModel.updateAdMutation.mutate(adEditFormModel.form.values);
-              }}
+              onClick={submitEditForm}
               disabled={!adEditFormModel.requiredOk || adEditFormModel.updateAdMutation.isPending}
               loading={adEditFormModel.updateAdMutation.isPending}
             >

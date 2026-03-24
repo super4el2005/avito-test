@@ -19,7 +19,6 @@ import { ThemeToggle } from './shared';
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchOnMount: false,
       retry: 0,
       refetchOnReconnect: false,
     },
