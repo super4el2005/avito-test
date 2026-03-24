@@ -75,6 +75,29 @@ const TYPE_LABEL_TRANSLATIONS_BY_CATEGORY: Record<string, string> = {
   [ITEM_CATEGORIES.ELECTRONICS]: 'Тип',
 };
 
+const DATE_TIME_FORMATTER_RU = new Intl.DateTimeFormat('ru-RU', {
+  day: 'numeric',
+  month: 'long',
+  hour: '2-digit',
+  minute: '2-digit',
+});
+
+const formatDateTimeRu = (value?: string): string => {
+  if (!value) return '-';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+
+  const parts = DATE_TIME_FORMATTER_RU.formatToParts(date);
+  const day = parts.find((part) => part.type === 'day')?.value;
+  const month = parts.find((part) => part.type === 'month')?.value;
+  const hour = parts.find((part) => part.type === 'hour')?.value;
+  const minute = parts.find((part) => part.type === 'minute')?.value;
+
+  if (!day || !month || !hour || !minute) return '-';
+  return `${day} ${month} ${hour}:${minute}`;
+};
+
 const translateParamLabel = (key: string, category?: Item['category']): string => {
   if (key === 'type' && category) {
     return TYPE_LABEL_TRANSLATIONS_BY_CATEGORY[category] ?? PARAM_LABEL_TRANSLATIONS.type;
@@ -179,8 +202,8 @@ export default function () {
           </Button>
         </Group>
         <Stack gap={4} align="flex-end">
-          <Text c="dimmed">Опубликовано: 10 марта 22:39</Text>
-          <Text c="dimmed">Отредактировано: 10 марта 23:12</Text>
+          <Text c="dimmed">Опубликовано: {formatDateTimeRu(getAdQuery.data?.data.createdAt)}</Text>
+          <Text c="dimmed">Отредактировано: {formatDateTimeRu(getAdQuery.data?.data.updatedAt)}</Text>
         </Stack>
       </Group>
       <Divider my="md" />

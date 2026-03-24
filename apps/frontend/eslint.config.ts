@@ -20,6 +20,7 @@ export default defineConfig([
     extends: ['js/recommended'],
     languageOptions: { globals: { ...globals.browser, ...globals.node } },
     rules: {
+      'func-style': ['error', 'declaration', { allowArrowFunctions: false }],
       'simple-import-sort/imports': [
         'error',
         {
@@ -53,6 +54,18 @@ export default defineConfig([
       '@typescript-eslint/no-unused-vars': [
         'error',
         { argsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
+      ],
+    },
+  },
+  {
+    files: ['app/routes/**/*.{js,jsx,ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'ExportDefaultDeclaration > FunctionDeclaration[id!=null]',
+          message: 'Route page default export must be anonymous: export default function () {}',
+        },
       ],
     },
   },

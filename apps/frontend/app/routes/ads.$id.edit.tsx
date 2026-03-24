@@ -25,7 +25,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 
 import { diffWordsWithSpace } from 'diff';
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useMemo, useRef, useState } from 'react';
 
 import { MdChatBubbleOutline, MdInfo, MdLightbulbOutline, MdOutlineClear } from 'react-icons/md';
 
@@ -677,49 +677,21 @@ const AiChatWidget = memo(function AiChatWidget({
   );
 });
 
-const createEmptyValues = (category: Category): EditFormValues => {
-  if (category === ITEM_CATEGORIES.AUTO) {
-    return {
-      category,
-      title: '',
-      price: null,
-      description: '',
-      params: {},
-    };
-  }
-  if (category === ITEM_CATEGORIES.REAL_ESTATE) {
-    return {
-      category,
-      title: '',
-      price: null,
-      description: '',
-      params: {},
-    };
-  }
-  return {
-    category: ITEM_CATEGORIES.ELECTRONICS,
-    title: '',
-    price: null,
-    description: '',
-    params: {},
-  };
-};
+const mapItemToEditValues = (item: ItemDetailsResponse): EditFormValues =>
+  ({
+    category: item.category,
+    title: item.title ?? '',
+    price: item.price ?? null,
+    description: item.description ?? '',
+    params: (item.params ?? {}) as any,
+  }) as EditFormValues;
 
-export default function AdsEditRoute() {
-  const params = useParams();
+function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
   const navigate = useNavigate();
   const theme = useMantineTheme();
 
-  const id = params.id ?? '';
-
-  const getAdQuery = useQuery({
-    queryKey: ['ad', id],
-    queryFn: ({ signal }) => apiAds.get<ItemDetailsResponse>(`/items/${id}`, { signal }),
-    enabled: Boolean(id),
-  });
-
   const form = useForm<EditFormValues>({
-    initialValues: createEmptyValues(ITEM_CATEGORIES.ELECTRONICS),
+    initialValues: mapItemToEditValues(item),
     validateInputOnBlur: true,
     validate: (values: EditFormValues) => ({
       category: !values.category ? 'Категория должна быть заполнена' : null,
@@ -732,26 +704,8 @@ export default function AdsEditRoute() {
     [ITEM_CATEGORIES.AUTO]: {},
     [ITEM_CATEGORIES.REAL_ESTATE]: {},
     [ITEM_CATEGORIES.ELECTRONICS]: {},
+    [item.category]: (item.params ?? {}) as any,
   });
-
-  useEffect(() => {
-    const item = getAdQuery.data?.data;
-    if (!item) return;
-
-    const nextValues: EditFormValues = {
-      category: item.category,
-      title: item.title ?? '',
-      price: item.price ?? null,
-      description: item.description ?? '',
-      params: (item.params ?? {}) as any,
-    } as EditFormValues;
-
-    form.setValues(nextValues);
-    form.resetDirty(nextValues);
-
-    paramsByCategoryRef.current[item.category] = nextValues.params ?? {};
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [getAdQuery.data?.data?.id]);
 
   const warningStyles = useMemo(
     () => ({
@@ -882,32 +836,6 @@ export default function AdsEditRoute() {
     Boolean(form.values.category) &&
     Boolean(form.values.title.trim()) &&
     form.values.price !== null;
-
-  if (getAdQuery.isError) {
-    return (
-      <Container>
-        <Stack pt={30}>
-          <Alert color="red" title="Ошибка" icon={<MdInfo />}>
-            Не удалось загрузить объявление
-          </Alert>
-          <Button component={Link} to="/ads">
-            На главную
-          </Button>
-        </Stack>
-      </Container>
-    );
-  }
-
-  if (getAdQuery.isLoading || !getAdQuery.data?.data) {
-    return (
-      <Container size="xl" pt={30}>
-        <Stack gap="md">
-          <Title order={3}>Редактирование объявления</Title>
-          <Text c="dimmed">Загрузка…</Text>
-        </Stack>
-      </Container>
-    );
-  }
 
   return (
     <>
@@ -1226,4 +1154,43 @@ export default function AdsEditRoute() {
       <AiChatWidget itemContextRef={chatContextRef} />
     </>
   );
+}
+
+export default function () {
+  const params = useParams();
+  const id = params.id ?? '';
+
+  const getAdQuery = useQuery({
+    queryKey: ['ad', id],
+    queryFn: ({ signal }) => apiAds.get<ItemDetailsResponse>(`/items/${id}`, { signal }),
+    enabled: Boolean(id),
+  });
+
+  if (getAdQuery.isError) {
+    return (
+      <Container>
+        <Stack pt={30}>
+          <Alert color="red" title="Ошибка" icon={<MdInfo />}>
+            Не удалось загрузить объявление
+          </Alert>
+          <Button component={Link} to="/ads">
+            На главную
+          </Button>
+        </Stack>
+      </Container>
+    );
+  }
+
+  if (getAdQuery.isLoading || !getAdQuery.data?.data) {
+    return (
+      <Container size="xl" pt={30}>
+        <Stack gap="md">
+          <Title order={3}>Редактирование объявления</Title>
+          <Text c="dimmed">Загрузка…</Text>
+        </Stack>
+      </Container>
+    );
+  }
+
+  return <AdsEditForm id={id} item={getAdQuery.data.data} />;
 }
