@@ -23,11 +23,12 @@ import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MdInfo, MdOutlineClear, MdLightbulbOutline } from 'react-icons/md';
+import { MdInfo, MdOutlineClear, MdLightbulbOutline, MdChatBubbleOutline } from 'react-icons/md';
 import { Link, useNavigate, useParams } from 'react-router';
 import { aiChatAboutItem, aiSuggestDescription, aiSuggestPrice, apiAds, type AiChatMessage } from '~/api';
 import { queryClient } from '~/root';
 import { diffWordsWithSpace } from 'diff';
+import { useDisclosure } from '@mantine/hooks';
 
 type Category = (typeof ITEM_CATEGORIES)[keyof typeof ITEM_CATEGORIES];
 
@@ -349,6 +350,7 @@ export default function AdsEditRoute() {
 
     const [chatMessages, setChatMessages] = useState<AiChatMessage[]>([]);
     const [chatDraft, setChatDraft] = useState('');
+    const [isChatWidgetOpen, setIsChatWidgetOpen] = useDisclosure(false);
 
     const chatMutation = useMutation({
         mutationFn: async (nextMessages: AiChatMessage[]) => {
@@ -415,724 +417,762 @@ export default function AdsEditRoute() {
     }
 
     return (
-        <Container size="xl" pt={30}>
-            <Stack gap="md">
-                <Title >Редактирование объявления</Title>
+        <>
+            <Container size="xl" pt={30}>
+                <Stack gap="md">
+                    <Title >Редактирование объявления</Title>
 
-                <Stack gap="sm">
-                    <Select
-                        w={300}
-                        label="Категория"
-                        data={categoryOptions}
-                        allowDeselect={false}
-                        withAsterisk
-                        value={form.values.category}
-                        onChange={value => {
-                            const nextCategory = (value ?? ITEM_CATEGORIES.ELECTRONICS) as Category;
-                            const currentCategory = form.values.category as Category;
-                            paramsByCategoryRef.current[currentCategory] = form.values.params ?? {};
-
-                            const nextParams = paramsByCategoryRef.current[nextCategory] ?? {};
-
-                            form.setValues({
-                                ...form.values,
-                                category: nextCategory,
-                                params: nextParams as any,
-                            } as EditFormValues);
-
-                            form.setDirty({
-                                category: true,
-                                params: true,
-                            });
-                        }}
-                        error={form.errors.category}
-                        onBlur={() => form.validateField('category')}
-                    />
-
-                    <Divider my={5} />
-                    <Container ml={0} p={0} w={600} >
-                        <TextInput
-                            label="Название"
+                    <Stack gap="sm">
+                        <Select
+                            w={300}
+                            label="Категория"
+                            data={categoryOptions}
+                            allowDeselect={false}
                             withAsterisk
-                            placeholder="Название"
-                            {...form.getInputProps('title')}
-                            rightSection={
-                                form.values.title ? (
-                                    <ActionIcon
-                                        variant="subtle"
-                                        color="gray"
-                                        aria-label="Очистить"
-                                        onClick={() => form.setFieldValue('title', '')}
-                                    >
-                                        <MdOutlineClear size={18} />
-                                    </ActionIcon>
-                                ) : null
-                            }
+                            value={form.values.category}
+                            onChange={value => {
+                                const nextCategory = (value ?? ITEM_CATEGORIES.ELECTRONICS) as Category;
+                                const currentCategory = form.values.category as Category;
+                                paramsByCategoryRef.current[currentCategory] = form.values.params ?? {};
+
+                                const nextParams = paramsByCategoryRef.current[nextCategory] ?? {};
+
+                                form.setValues({
+                                    ...form.values,
+                                    category: nextCategory,
+                                    params: nextParams as any,
+                                } as EditFormValues);
+
+                                form.setDirty({
+                                    category: true,
+                                    params: true,
+                                });
+                            }}
+                            error={form.errors.category}
+                            onBlur={() => form.validateField('category')}
                         />
 
-                        <Group align="flex-end">
-                            <NumberInput
-                                label="Цена"
+                        <Divider my={5} />
+                        <Container ml={0} p={0} w={600} >
+                            <TextInput
+                                label="Название"
                                 withAsterisk
-                                placeholder="Цена"
-                                min={0}
-                                hideControls
-                                value={form.values.price ?? undefined}
-                                onChange={value => form.setFieldValue('price', typeof value === 'number' ? value : null)}
-                                onBlur={() => form.validateField('price')}
-                                error={form.errors.price}
+                                placeholder="Название"
+                                {...form.getInputProps('title')}
                                 rightSection={
-                                    form.values.price !== null ? (
+                                    form.values.title ? (
                                         <ActionIcon
                                             variant="subtle"
                                             color="gray"
                                             aria-label="Очистить"
-                                            onClick={() => form.setFieldValue('price', null)}
+                                            onClick={() => form.setFieldValue('title', '')}
                                         >
                                             <MdOutlineClear size={18} />
                                         </ActionIcon>
                                     ) : null
                                 }
                             />
-                            <Popover
-                                position="bottom-start"
-                                withArrow
-                                shadow="md"
-                                opened={isPriceAiPopoverOpen}
-                                onChange={setIsPriceAiPopoverOpen}
-                                closeOnClickOutside={false}
-                                closeOnEscape={false}
-                            >
-                                <Popover.Target>
-                                    <Button
-                                        variant="light"
-                                        leftSection={<MdLightbulbOutline size={20} />}
-                                        loading={priceAiMutation.isPending}
-                                        onClick={() => priceAiMutation.mutate()}
-                                    >
-                                        {priceAiMutation.isPending
-                                            ? 'Выполняется запрос'
-                                            : hasPriceAiEverRun
-                                                ? 'Повторить запрос'
-                                                : 'Узнать рыночную цену'}
-                                    </Button>
-                                </Popover.Target>
-                                <Popover.Dropdown>
-                                    <Stack gap="sm" w={420}>
-                                        {priceAiError ? (
-                                            <>
-                                                <Title order={5} c="red">
-                                                    Произошла ошибка при запросе к AI
-                                                </Title>
-                                                <Text c="dimmed" style={{ whiteSpace: 'pre-wrap' }}>
-                                                    {priceAiError}
-                                                </Text>
-                                                <Group justify="flex-start">
-                                                    <Button
-                                                        variant="default"
-                                                        onClick={() => setIsPriceAiPopoverOpen(false)}
-                                                    >
-                                                        Закрыть
-                                                    </Button>
-                                                </Group>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Title order={5}>Ответ AI:</Title>
-                                                <Text style={{ whiteSpace: 'pre-wrap' }}>
-                                                    {priceAiText ?? ''}
-                                                </Text>
-                                                <Group justify="flex-start">
-                                                    <Button
-                                                        onClick={() => {
-                                                            const n = parsePriceFromAiText(priceAiText ?? '');
-                                                            if (n !== null) form.setFieldValue('price', n);
-                                                            setIsPriceAiPopoverOpen(false);
-                                                        }}
-                                                        disabled={parsePriceFromAiText(priceAiText ?? '') === null}
-                                                    >
-                                                        Применить
-                                                    </Button>
-                                                    <Button
-                                                        variant="default"
-                                                        onClick={() => setIsPriceAiPopoverOpen(false)}
-                                                    >
-                                                        Закрыть
-                                                    </Button>
-                                                </Group>
-                                            </>
-                                        )}
-                                    </Stack>
-                                </Popover.Dropdown>
-                            </Popover>
-                        </Group>
-                    </Container>
 
-                </Stack>
-
-                <Divider my={5} />
-
-                <Stack gap="sm">
-                    <Title order={4}>Характеристики</Title>
-                    <Container ml={0} w={600} p={0} >
-                        {form.values.category === ITEM_CATEGORIES.AUTO && (
-                            <Stack gap="sm">
-                                <Select
-                                    label="Коробка передач"
-                                    placeholder="Выберите"
-                                    clearable
-                                    data={[
-                                        { value: 'automatic', label: 'Автомат' },
-                                        { value: 'manual', label: 'Механика' },
-                                    ]}
-                                    value={(form.values.params as any).transmission ?? null}
-                                    onChange={value =>
-                                        form.setFieldValue('params', {
-                                            ...(form.values.params as any),
-                                            transmission: (value ?? undefined) as any,
-                                        })
-                                    }
-                                    styles={maybeWarnIfEmpty(false, (form.values.params as any).transmission)}
-                                />
-
-                                <TextInput
-                                    label="Марка"
-                                    placeholder="Марка"
-                                    value={(form.values.params as any).brand ?? ''}
-                                    onChange={e =>
-                                        form.setFieldValue('params', {
-                                            ...(form.values.params as any),
-                                            brand: e.currentTarget.value || undefined,
-                                        })
-                                    }
-                                    rightSection={
-                                        (form.values.params as any).brand ? (
-                                            <ActionIcon
-                                                variant="subtle"
-                                                color="gray"
-                                                aria-label="Очистить"
-                                                onClick={() =>
-                                                    form.setFieldValue('params', {
-                                                        ...(form.values.params as any),
-                                                        brand: undefined,
-                                                    })
-                                                }
-                                            >
-                                                <MdOutlineClear size={18} />
-                                            </ActionIcon>
-                                        ) : null
-                                    }
-                                    styles={maybeWarnIfEmpty(false, (form.values.params as any).brand)}
-                                />
-
-                                <TextInput
-                                    label="Модель"
-                                    placeholder="Модель"
-                                    value={(form.values.params as any).model ?? ''}
-                                    onChange={e =>
-                                        form.setFieldValue('params', {
-                                            ...(form.values.params as any),
-                                            model: e.currentTarget.value || undefined,
-                                        })
-                                    }
-                                    rightSection={
-                                        (form.values.params as any).model ? (
-                                            <ActionIcon
-                                                variant="subtle"
-                                                color="gray"
-                                                aria-label="Очистить"
-                                                onClick={() =>
-                                                    form.setFieldValue('params', {
-                                                        ...(form.values.params as any),
-                                                        model: undefined,
-                                                    })
-                                                }
-                                            >
-                                                <MdOutlineClear size={18} />
-                                            </ActionIcon>
-                                        ) : null
-                                    }
-                                    styles={maybeWarnIfEmpty(false, (form.values.params as any).model)}
-                                />
-
+                            <Group align="flex-end">
                                 <NumberInput
-                                    label="Год выпуска"
-                                    placeholder="Год"
-                                    hideControls
-                                    min={1900}
-                                    value={(form.values.params as any).yearOfManufacture ?? undefined}
-                                    onChange={value =>
-                                        form.setFieldValue('params', {
-                                            ...(form.values.params as any),
-                                            yearOfManufacture: typeof value === 'number' ? value : undefined,
-                                        })
-                                    }
-                                    styles={maybeWarnIfEmpty(false, (form.values.params as any).yearOfManufacture)}
-                                />
-
-                                <NumberInput
-                                    label="Пробег (км)"
-                                    placeholder="Пробег"
-                                    hideControls
+                                    label="Цена"
+                                    withAsterisk
+                                    placeholder="Цена"
                                     min={0}
-                                    value={(form.values.params as any).mileage ?? undefined}
-                                    onChange={value =>
-                                        form.setFieldValue('params', {
-                                            ...(form.values.params as any),
-                                            mileage: typeof value === 'number' ? value : undefined,
-                                        })
-                                    }
-                                    styles={maybeWarnIfEmpty(false, (form.values.params as any).mileage)}
-                                />
-
-                                <NumberInput
-                                    label="Мощность двигателя (л.с.)"
-                                    placeholder="Мощность"
                                     hideControls
-                                    min={0}
-                                    value={(form.values.params as any).enginePower ?? undefined}
-                                    onChange={value =>
-                                        form.setFieldValue('params', {
-                                            ...(form.values.params as any),
-                                            enginePower: typeof value === 'number' ? value : undefined,
-                                        })
-                                    }
-                                    styles={maybeWarnIfEmpty(false, (form.values.params as any).enginePower)}
-                                />
-                            </Stack>
-                        )}
-
-                        {form.values.category === ITEM_CATEGORIES.REAL_ESTATE && (
-                            <Stack gap="sm">
-                                <Select
-                                    label="Тип"
-                                    placeholder="Выберите"
-                                    clearable
-                                    data={[
-                                        { value: 'flat', label: 'Квартира' },
-                                        { value: 'house', label: 'Дом' },
-                                        { value: 'room', label: 'Комната' },
-                                    ]}
-                                    value={(form.values.params as any).type ?? null}
-                                    onChange={value =>
-                                        form.setFieldValue('params', {
-                                            ...(form.values.params as any),
-                                            type: (value ?? undefined) as any,
-                                        })
-                                    }
-                                    styles={maybeWarnIfEmpty(false, (form.values.params as any).type)}
-                                />
-
-                                <TextInput
-                                    label="Адрес"
-                                    placeholder="Адрес"
-                                    value={(form.values.params as any).address ?? ''}
-                                    onChange={e =>
-                                        form.setFieldValue('params', {
-                                            ...(form.values.params as any),
-                                            address: e.currentTarget.value || undefined,
-                                        })
-                                    }
+                                    value={form.values.price ?? undefined}
+                                    onChange={value => form.setFieldValue('price', typeof value === 'number' ? value : null)}
+                                    onBlur={() => form.validateField('price')}
+                                    error={form.errors.price}
                                     rightSection={
-                                        (form.values.params as any).address ? (
+                                        form.values.price !== null ? (
                                             <ActionIcon
                                                 variant="subtle"
                                                 color="gray"
                                                 aria-label="Очистить"
-                                                onClick={() =>
-                                                    form.setFieldValue('params', {
-                                                        ...(form.values.params as any),
-                                                        address: undefined,
-                                                    })
-                                                }
+                                                onClick={() => form.setFieldValue('price', null)}
                                             >
                                                 <MdOutlineClear size={18} />
                                             </ActionIcon>
                                         ) : null
                                     }
-                                    styles={maybeWarnIfEmpty(false, (form.values.params as any).address)}
                                 />
-
-                                <NumberInput
-                                    label="Площадь (м²)"
-                                    placeholder="Площадь"
-                                    hideControls
-                                    min={0}
-                                    value={(form.values.params as any).area ?? undefined}
-                                    onChange={value =>
-                                        form.setFieldValue('params', {
-                                            ...(form.values.params as any),
-                                            area: typeof value === 'number' ? value : undefined,
-                                        })
-                                    }
-                                    styles={maybeWarnIfEmpty(false, (form.values.params as any).area)}
-                                />
-
-                                <NumberInput
-                                    label="Этаж"
-                                    placeholder="Этаж"
-                                    hideControls
-                                    min={0}
-                                    value={(form.values.params as any).floor ?? undefined}
-                                    onChange={value =>
-                                        form.setFieldValue('params', {
-                                            ...(form.values.params as any),
-                                            floor: typeof value === 'number' ? value : undefined,
-                                        })
-                                    }
-                                    styles={maybeWarnIfEmpty(false, (form.values.params as any).floor)}
-                                />
-                            </Stack>
-                        )}
-
-                        {form.values.category === ITEM_CATEGORIES.ELECTRONICS && (
-                            <Stack gap="sm">
-                                <Select
-                                    label="Тип"
-                                    placeholder="Выберите"
-                                    clearable
-                                    data={[
-                                        { value: 'phone', label: 'Телефон' },
-                                        { value: 'laptop', label: 'Ноутбук' },
-                                        { value: 'misc', label: 'Разное' },
-                                    ]}
-                                    value={(form.values.params as any).type ?? null}
-                                    onChange={value =>
-                                        form.setFieldValue('params', {
-                                            ...(form.values.params as any),
-                                            type: (value ?? undefined) as any,
-                                        })
-                                    }
-                                    styles={maybeWarnIfEmpty(false, (form.values.params as any).type)}
-                                />
-
-                                <TextInput
-                                    label="Бренд"
-                                    placeholder="Бренд"
-                                    value={(form.values.params as any).brand ?? ''}
-                                    onChange={e =>
-                                        form.setFieldValue('params', {
-                                            ...(form.values.params as any),
-                                            brand: e.currentTarget.value || undefined,
-                                        })
-                                    }
-                                    rightSection={
-                                        (form.values.params as any).brand ? (
-                                            <ActionIcon
-                                                variant="subtle"
-                                                color="gray"
-                                                aria-label="Очистить"
-                                                onClick={() =>
-                                                    form.setFieldValue('params', {
-                                                        ...(form.values.params as any),
-                                                        brand: undefined,
-                                                    })
-                                                }
-                                            >
-                                                <MdOutlineClear size={18} />
-                                            </ActionIcon>
-                                        ) : null
-                                    }
-                                    styles={maybeWarnIfEmpty(false, (form.values.params as any).brand)}
-                                />
-
-                                <TextInput
-                                    label="Модель"
-                                    placeholder="Модель"
-                                    value={(form.values.params as any).model ?? ''}
-                                    onChange={e =>
-                                        form.setFieldValue('params', {
-                                            ...(form.values.params as any),
-                                            model: e.currentTarget.value || undefined,
-                                        })
-                                    }
-                                    rightSection={
-                                        (form.values.params as any).model ? (
-                                            <ActionIcon
-                                                variant="subtle"
-                                                color="gray"
-                                                aria-label="Очистить"
-                                                onClick={() =>
-                                                    form.setFieldValue('params', {
-                                                        ...(form.values.params as any),
-                                                        model: undefined,
-                                                    })
-                                                }
-                                            >
-                                                <MdOutlineClear size={18} />
-                                            </ActionIcon>
-                                        ) : null
-                                    }
-                                    styles={maybeWarnIfEmpty(false, (form.values.params as any).model)}
-                                />
-
-                                <Select
-                                    label="Состояние"
-                                    placeholder="Выберите"
-                                    clearable
-                                    data={[
-                                        { value: 'new', label: 'Новый' },
-                                        { value: 'used', label: 'Б/У' },
-                                    ]}
-                                    value={(form.values.params as any).condition ?? null}
-                                    onChange={value =>
-                                        form.setFieldValue('params', {
-                                            ...(form.values.params as any),
-                                            condition: (value ?? undefined) as any,
-                                        })
-                                    }
-                                    styles={maybeWarnIfEmpty(false, (form.values.params as any).condition)}
-                                />
-
-                                <TextInput
-                                    label="Цвет"
-                                    placeholder="Цвет"
-                                    value={(form.values.params as any).color ?? ''}
-                                    onChange={e =>
-                                        form.setFieldValue('params', {
-                                            ...(form.values.params as any),
-                                            color: e.currentTarget.value || undefined,
-                                        })
-                                    }
-                                    rightSection={
-                                        (form.values.params as any).color ? (
-                                            <ActionIcon
-                                                variant="subtle"
-                                                color="gray"
-                                                aria-label="Очистить"
-                                                onClick={() =>
-                                                    form.setFieldValue('params', {
-                                                        ...(form.values.params as any),
-                                                        color: undefined,
-                                                    })
-                                                }
-                                            >
-                                                <MdOutlineClear size={18} />
-                                            </ActionIcon>
-                                        ) : null
-                                    }
-                                    styles={maybeWarnIfEmpty(false, (form.values.params as any).color)}
-                                />
-                            </Stack>
-                        )}
-                    </Container>
-                </Stack>
-
-                <Divider />
-
-                <Stack gap="sm">
-                    <Title order={4}>Описание</Title>
-                    <Textarea
-                        placeholder="Описание"
-                        minRows={5}
-                        autosize
-                        value={form.values.description}
-                        onChange={e => form.setFieldValue('description', e.currentTarget.value)}
-                        rightSection={
-                            form.values.description ? (
-                                <ActionIcon
-                                    variant="subtle"
-                                    color="gray"
-                                    aria-label="Очистить"
-                                    onClick={() => form.setFieldValue('description', '')}
+                                <Popover
+                                    position="bottom-start"
+                                    withArrow
+                                    shadow="md"
+                                    opened={isPriceAiPopoverOpen}
+                                    onChange={setIsPriceAiPopoverOpen}
+                                    closeOnClickOutside={false}
+                                    closeOnEscape={false}
                                 >
-                                    <MdOutlineClear size={18} />
-                                </ActionIcon>
-                            ) : null
-                        }
-                        styles={maybeWarnIfEmpty(false, form.values.description)}
-                    />
-                    <Popover
-                        position="bottom-start"
-                        withArrow
-                        shadow="md"
-                        opened={isDescriptionAiPopoverOpen}
-                        onChange={setIsDescriptionAiPopoverOpen}
-                        closeOnClickOutside={false}
-                        closeOnEscape={false}
-                    >
-                        <Popover.Target>
-                            <Button
-                                w="min-content"
-                                variant="light"
-                                leftSection={<MdLightbulbOutline size={20} />}
-                                loading={descriptionAiMutation.isPending}
-                                onClick={() => descriptionAiMutation.mutate()}
-                            >
-                                {descriptionAiMutation.isPending
-                                    ? 'Выполняется запрос'
-                                    : hasDescriptionAiEverRun
-                                        ? 'Повторить запрос'
-                                        : form.values.description.trim()
-                                            ? 'Улучшить описание'
-                                            : 'Придумать описание'}
-                            </Button>
-                        </Popover.Target>
-                        <Popover.Dropdown>
-                            <Stack gap="sm" w={420}>
-                                {descriptionAiError ? (
-                                    <>
-                                        <Title order={5} c="red">
-                                            Произошла ошибка при запросе к AI
-                                        </Title>
-                                        <Text c="dimmed" style={{ whiteSpace: 'pre-wrap' }}>
-                                            {descriptionAiError}
-                                        </Text>
-                                        <Group justify="flex-start">
-                                            <Button
-                                                variant="default"
-                                                onClick={() => setIsDescriptionAiPopoverOpen(false)}
-                                            >
-                                                Закрыть
-                                            </Button>
-                                        </Group>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Title order={5}>Ответ AI:</Title>
-                                        <Text style={{ whiteSpace: 'pre-wrap' }}>
-                                            {descriptionAiText ?? ''}
-                                        </Text>
-                                        {!!descriptionAiText && (
-                                            <>
-                                                <Divider />
-                                                <Group align="flex-start" grow>
-                                                    <Stack gap={6}>
-                                                        <Text fw={600} size="sm">
-                                                            Было
-                                                        </Text>
-                                                        <Paper withBorder p="sm" radius="md">
-                                                            <Text style={{ whiteSpace: 'pre-wrap' }}>
-                                                                {descriptionAiBeforeText || '—'}
-                                                            </Text>
-                                                        </Paper>
-                                                    </Stack>
-                                                    <Stack gap={6}>
-                                                        <Text fw={600} size="sm">
-                                                            Стало
-                                                        </Text>
-                                                        <Paper withBorder p="sm" radius="md">
-                                                            <DiffText
-                                                                before={descriptionAiBeforeText || ''}
-                                                                after={descriptionAiText}
-                                                            />
-                                                        </Paper>
-                                                    </Stack>
-                                                </Group>
-                                            </>
-                                        )}
-                                        <Group justify="flex-start">
-                                            <Button
-                                                onClick={() => {
-                                                    form.setFieldValue('description', descriptionAiText ?? '');
-                                                    setIsDescriptionAiPopoverOpen(false);
-                                                }}
-                                                disabled={!descriptionAiText}
-                                            >
-                                                Применить
-                                            </Button>
-                                            <Button
-                                                variant="default"
-                                                onClick={() => setIsDescriptionAiPopoverOpen(false)}
-                                            >
-                                                Закрыть
-                                            </Button>
-                                        </Group>
-                                    </>
-                                )}
-                            </Stack>
-                        </Popover.Dropdown>
-                    </Popover>
-
-                </Stack>
-
-                <Divider />
-
-                <Stack gap="sm">
-                    <Title order={4}>Чат с AI</Title>
-                    <Paper withBorder radius="md" p="md">
-                        <Stack gap="sm">
-                            <ScrollArea h={220} offsetScrollbars>
-                                <Stack gap="xs">
-                                    {chatMessages.length === 0 ? (
-                                        <Text c="dimmed">
-                                            Задайте уточняющий вопрос по этому объявлению — контекст передаётся автоматически.
-                                        </Text>
-                                    ) : (
-                                        chatMessages.map((m, idx) => (
-                                            <Group key={idx} justify={m.role === 'user' ? 'flex-end' : 'flex-start'}>
-                                                <Paper
-                                                    withBorder
-                                                    radius="md"
-                                                    p="sm"
-                                                    style={{
-                                                        maxWidth: 520,
-                                                        background:
-                                                            m.role === 'user'
-                                                                ? 'rgba(34, 139, 230, 0.08)'
-                                                                : undefined,
-                                                    }}
-                                                >
-                                                    <Text fw={600} size="xs" c="dimmed" mb={4}>
-                                                        {m.role === 'user' ? 'Вы' : 'AI'}
+                                    <Popover.Target>
+                                        <Button
+                                            variant="light"
+                                            leftSection={<MdLightbulbOutline size={20} />}
+                                            loading={priceAiMutation.isPending}
+                                            onClick={() => priceAiMutation.mutate()}
+                                        >
+                                            {priceAiMutation.isPending
+                                                ? 'Выполняется запрос'
+                                                : hasPriceAiEverRun
+                                                    ? 'Повторить запрос'
+                                                    : 'Узнать рыночную цену'}
+                                        </Button>
+                                    </Popover.Target>
+                                    <Popover.Dropdown>
+                                        <Stack gap="sm" w={420}>
+                                            {priceAiError ? (
+                                                <>
+                                                    <Title order={5} c="red">
+                                                        Произошла ошибка при запросе к AI
+                                                    </Title>
+                                                    <Text c="dimmed" style={{ whiteSpace: 'pre-wrap' }}>
+                                                        {priceAiError}
                                                     </Text>
+                                                    <Group justify="flex-start">
+                                                        <Button
+                                                            variant="default"
+                                                            onClick={() => setIsPriceAiPopoverOpen(false)}
+                                                        >
+                                                            Закрыть
+                                                        </Button>
+                                                    </Group>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Title order={5}>Ответ AI:</Title>
                                                     <Text style={{ whiteSpace: 'pre-wrap' }}>
-                                                        {m.content}
+                                                        {priceAiText ?? ''}
                                                     </Text>
-                                                </Paper>
+                                                    <Group justify="flex-start">
+                                                        <Button
+                                                            onClick={() => {
+                                                                const n = parsePriceFromAiText(priceAiText ?? '');
+                                                                if (n !== null) form.setFieldValue('price', n);
+                                                                setIsPriceAiPopoverOpen(false);
+                                                            }}
+                                                            disabled={parsePriceFromAiText(priceAiText ?? '') === null}
+                                                        >
+                                                            Применить
+                                                        </Button>
+                                                        <Button
+                                                            variant="default"
+                                                            onClick={() => setIsPriceAiPopoverOpen(false)}
+                                                        >
+                                                            Закрыть
+                                                        </Button>
+                                                    </Group>
+                                                </>
+                                            )}
+                                        </Stack>
+                                    </Popover.Dropdown>
+                                </Popover>
+                            </Group>
+                        </Container>
+
+                    </Stack>
+
+                    <Divider my={5} />
+
+                    <Stack gap="sm">
+                        <Title order={4}>Характеристики</Title>
+                        <Container ml={0} w={600} p={0} >
+                            {form.values.category === ITEM_CATEGORIES.AUTO && (
+                                <Stack gap="sm">
+                                    <Select
+                                        label="Коробка передач"
+                                        placeholder="Выберите"
+                                        clearable
+                                        data={[
+                                            { value: 'automatic', label: 'Автомат' },
+                                            { value: 'manual', label: 'Механика' },
+                                        ]}
+                                        value={(form.values.params as any).transmission ?? null}
+                                        onChange={value =>
+                                            form.setFieldValue('params', {
+                                                ...(form.values.params as any),
+                                                transmission: (value ?? undefined) as any,
+                                            })
+                                        }
+                                        styles={maybeWarnIfEmpty(false, (form.values.params as any).transmission)}
+                                    />
+
+                                    <TextInput
+                                        label="Марка"
+                                        placeholder="Марка"
+                                        value={(form.values.params as any).brand ?? ''}
+                                        onChange={e =>
+                                            form.setFieldValue('params', {
+                                                ...(form.values.params as any),
+                                                brand: e.currentTarget.value || undefined,
+                                            })
+                                        }
+                                        rightSection={
+                                            (form.values.params as any).brand ? (
+                                                <ActionIcon
+                                                    variant="subtle"
+                                                    color="gray"
+                                                    aria-label="Очистить"
+                                                    onClick={() =>
+                                                        form.setFieldValue('params', {
+                                                            ...(form.values.params as any),
+                                                            brand: undefined,
+                                                        })
+                                                    }
+                                                >
+                                                    <MdOutlineClear size={18} />
+                                                </ActionIcon>
+                                            ) : null
+                                        }
+                                        styles={maybeWarnIfEmpty(false, (form.values.params as any).brand)}
+                                    />
+
+                                    <TextInput
+                                        label="Модель"
+                                        placeholder="Модель"
+                                        value={(form.values.params as any).model ?? ''}
+                                        onChange={e =>
+                                            form.setFieldValue('params', {
+                                                ...(form.values.params as any),
+                                                model: e.currentTarget.value || undefined,
+                                            })
+                                        }
+                                        rightSection={
+                                            (form.values.params as any).model ? (
+                                                <ActionIcon
+                                                    variant="subtle"
+                                                    color="gray"
+                                                    aria-label="Очистить"
+                                                    onClick={() =>
+                                                        form.setFieldValue('params', {
+                                                            ...(form.values.params as any),
+                                                            model: undefined,
+                                                        })
+                                                    }
+                                                >
+                                                    <MdOutlineClear size={18} />
+                                                </ActionIcon>
+                                            ) : null
+                                        }
+                                        styles={maybeWarnIfEmpty(false, (form.values.params as any).model)}
+                                    />
+
+                                    <NumberInput
+                                        label="Год выпуска"
+                                        placeholder="Год"
+                                        hideControls
+                                        min={1900}
+                                        value={(form.values.params as any).yearOfManufacture ?? undefined}
+                                        onChange={value =>
+                                            form.setFieldValue('params', {
+                                                ...(form.values.params as any),
+                                                yearOfManufacture: typeof value === 'number' ? value : undefined,
+                                            })
+                                        }
+                                        styles={maybeWarnIfEmpty(false, (form.values.params as any).yearOfManufacture)}
+                                    />
+
+                                    <NumberInput
+                                        label="Пробег (км)"
+                                        placeholder="Пробег"
+                                        hideControls
+                                        min={0}
+                                        value={(form.values.params as any).mileage ?? undefined}
+                                        onChange={value =>
+                                            form.setFieldValue('params', {
+                                                ...(form.values.params as any),
+                                                mileage: typeof value === 'number' ? value : undefined,
+                                            })
+                                        }
+                                        styles={maybeWarnIfEmpty(false, (form.values.params as any).mileage)}
+                                    />
+
+                                    <NumberInput
+                                        label="Мощность двигателя (л.с.)"
+                                        placeholder="Мощность"
+                                        hideControls
+                                        min={0}
+                                        value={(form.values.params as any).enginePower ?? undefined}
+                                        onChange={value =>
+                                            form.setFieldValue('params', {
+                                                ...(form.values.params as any),
+                                                enginePower: typeof value === 'number' ? value : undefined,
+                                            })
+                                        }
+                                        styles={maybeWarnIfEmpty(false, (form.values.params as any).enginePower)}
+                                    />
+                                </Stack>
+                            )}
+
+                            {form.values.category === ITEM_CATEGORIES.REAL_ESTATE && (
+                                <Stack gap="sm">
+                                    <Select
+                                        label="Тип"
+                                        placeholder="Выберите"
+                                        clearable
+                                        data={[
+                                            { value: 'flat', label: 'Квартира' },
+                                            { value: 'house', label: 'Дом' },
+                                            { value: 'room', label: 'Комната' },
+                                        ]}
+                                        value={(form.values.params as any).type ?? null}
+                                        onChange={value =>
+                                            form.setFieldValue('params', {
+                                                ...(form.values.params as any),
+                                                type: (value ?? undefined) as any,
+                                            })
+                                        }
+                                        styles={maybeWarnIfEmpty(false, (form.values.params as any).type)}
+                                    />
+
+                                    <TextInput
+                                        label="Адрес"
+                                        placeholder="Адрес"
+                                        value={(form.values.params as any).address ?? ''}
+                                        onChange={e =>
+                                            form.setFieldValue('params', {
+                                                ...(form.values.params as any),
+                                                address: e.currentTarget.value || undefined,
+                                            })
+                                        }
+                                        rightSection={
+                                            (form.values.params as any).address ? (
+                                                <ActionIcon
+                                                    variant="subtle"
+                                                    color="gray"
+                                                    aria-label="Очистить"
+                                                    onClick={() =>
+                                                        form.setFieldValue('params', {
+                                                            ...(form.values.params as any),
+                                                            address: undefined,
+                                                        })
+                                                    }
+                                                >
+                                                    <MdOutlineClear size={18} />
+                                                </ActionIcon>
+                                            ) : null
+                                        }
+                                        styles={maybeWarnIfEmpty(false, (form.values.params as any).address)}
+                                    />
+
+                                    <NumberInput
+                                        label="Площадь (м²)"
+                                        placeholder="Площадь"
+                                        hideControls
+                                        min={0}
+                                        value={(form.values.params as any).area ?? undefined}
+                                        onChange={value =>
+                                            form.setFieldValue('params', {
+                                                ...(form.values.params as any),
+                                                area: typeof value === 'number' ? value : undefined,
+                                            })
+                                        }
+                                        styles={maybeWarnIfEmpty(false, (form.values.params as any).area)}
+                                    />
+
+                                    <NumberInput
+                                        label="Этаж"
+                                        placeholder="Этаж"
+                                        hideControls
+                                        min={0}
+                                        value={(form.values.params as any).floor ?? undefined}
+                                        onChange={value =>
+                                            form.setFieldValue('params', {
+                                                ...(form.values.params as any),
+                                                floor: typeof value === 'number' ? value : undefined,
+                                            })
+                                        }
+                                        styles={maybeWarnIfEmpty(false, (form.values.params as any).floor)}
+                                    />
+                                </Stack>
+                            )}
+
+                            {form.values.category === ITEM_CATEGORIES.ELECTRONICS && (
+                                <Stack gap="sm">
+                                    <Select
+                                        label="Тип"
+                                        placeholder="Выберите"
+                                        clearable
+                                        data={[
+                                            { value: 'phone', label: 'Телефон' },
+                                            { value: 'laptop', label: 'Ноутбук' },
+                                            { value: 'misc', label: 'Разное' },
+                                        ]}
+                                        value={(form.values.params as any).type ?? null}
+                                        onChange={value =>
+                                            form.setFieldValue('params', {
+                                                ...(form.values.params as any),
+                                                type: (value ?? undefined) as any,
+                                            })
+                                        }
+                                        styles={maybeWarnIfEmpty(false, (form.values.params as any).type)}
+                                    />
+
+                                    <TextInput
+                                        label="Бренд"
+                                        placeholder="Бренд"
+                                        value={(form.values.params as any).brand ?? ''}
+                                        onChange={e =>
+                                            form.setFieldValue('params', {
+                                                ...(form.values.params as any),
+                                                brand: e.currentTarget.value || undefined,
+                                            })
+                                        }
+                                        rightSection={
+                                            (form.values.params as any).brand ? (
+                                                <ActionIcon
+                                                    variant="subtle"
+                                                    color="gray"
+                                                    aria-label="Очистить"
+                                                    onClick={() =>
+                                                        form.setFieldValue('params', {
+                                                            ...(form.values.params as any),
+                                                            brand: undefined,
+                                                        })
+                                                    }
+                                                >
+                                                    <MdOutlineClear size={18} />
+                                                </ActionIcon>
+                                            ) : null
+                                        }
+                                        styles={maybeWarnIfEmpty(false, (form.values.params as any).brand)}
+                                    />
+
+                                    <TextInput
+                                        label="Модель"
+                                        placeholder="Модель"
+                                        value={(form.values.params as any).model ?? ''}
+                                        onChange={e =>
+                                            form.setFieldValue('params', {
+                                                ...(form.values.params as any),
+                                                model: e.currentTarget.value || undefined,
+                                            })
+                                        }
+                                        rightSection={
+                                            (form.values.params as any).model ? (
+                                                <ActionIcon
+                                                    variant="subtle"
+                                                    color="gray"
+                                                    aria-label="Очистить"
+                                                    onClick={() =>
+                                                        form.setFieldValue('params', {
+                                                            ...(form.values.params as any),
+                                                            model: undefined,
+                                                        })
+                                                    }
+                                                >
+                                                    <MdOutlineClear size={18} />
+                                                </ActionIcon>
+                                            ) : null
+                                        }
+                                        styles={maybeWarnIfEmpty(false, (form.values.params as any).model)}
+                                    />
+
+                                    <Select
+                                        label="Состояние"
+                                        placeholder="Выберите"
+                                        clearable
+                                        data={[
+                                            { value: 'new', label: 'Новый' },
+                                            { value: 'used', label: 'Б/У' },
+                                        ]}
+                                        value={(form.values.params as any).condition ?? null}
+                                        onChange={value =>
+                                            form.setFieldValue('params', {
+                                                ...(form.values.params as any),
+                                                condition: (value ?? undefined) as any,
+                                            })
+                                        }
+                                        styles={maybeWarnIfEmpty(false, (form.values.params as any).condition)}
+                                    />
+
+                                    <TextInput
+                                        label="Цвет"
+                                        placeholder="Цвет"
+                                        value={(form.values.params as any).color ?? ''}
+                                        onChange={e =>
+                                            form.setFieldValue('params', {
+                                                ...(form.values.params as any),
+                                                color: e.currentTarget.value || undefined,
+                                            })
+                                        }
+                                        rightSection={
+                                            (form.values.params as any).color ? (
+                                                <ActionIcon
+                                                    variant="subtle"
+                                                    color="gray"
+                                                    aria-label="Очистить"
+                                                    onClick={() =>
+                                                        form.setFieldValue('params', {
+                                                            ...(form.values.params as any),
+                                                            color: undefined,
+                                                        })
+                                                    }
+                                                >
+                                                    <MdOutlineClear size={18} />
+                                                </ActionIcon>
+                                            ) : null
+                                        }
+                                        styles={maybeWarnIfEmpty(false, (form.values.params as any).color)}
+                                    />
+                                </Stack>
+                            )}
+                        </Container>
+                    </Stack>
+
+                    <Divider />
+
+                    <Stack gap="sm">
+                        <Title order={4}>Описание</Title>
+                        <Textarea
+                            placeholder="Описание"
+                            minRows={5}
+                            autosize
+                            value={form.values.description}
+                            onChange={e => form.setFieldValue('description', e.currentTarget.value)}
+                            rightSection={
+                                form.values.description ? (
+                                    <ActionIcon
+                                        variant="subtle"
+                                        color="gray"
+                                        aria-label="Очистить"
+                                        onClick={() => form.setFieldValue('description', '')}
+                                    >
+                                        <MdOutlineClear size={18} />
+                                    </ActionIcon>
+                                ) : null
+                            }
+                            styles={maybeWarnIfEmpty(false, form.values.description)}
+                        />
+                        <Popover
+                            position="bottom-start"
+                            withArrow
+                            shadow="md"
+                            opened={isDescriptionAiPopoverOpen}
+                            onChange={setIsDescriptionAiPopoverOpen}
+                            closeOnClickOutside={false}
+                            closeOnEscape={false}
+                        >
+                            <Popover.Target>
+                                <Button
+                                    w="min-content"
+                                    variant="light"
+                                    leftSection={<MdLightbulbOutline size={20} />}
+                                    loading={descriptionAiMutation.isPending}
+                                    onClick={() => descriptionAiMutation.mutate()}
+                                >
+                                    {descriptionAiMutation.isPending
+                                        ? 'Выполняется запрос'
+                                        : hasDescriptionAiEverRun
+                                            ? 'Повторить запрос'
+                                            : form.values.description.trim()
+                                                ? 'Улучшить описание'
+                                                : 'Придумать описание'}
+                                </Button>
+                            </Popover.Target>
+
+                            <Popover.Dropdown>
+                                <Stack gap="sm" w={420}>
+                                    {descriptionAiError ? (
+                                        <>
+                                            <Title order={5} c="red">
+                                                Произошла ошибка при запросе к AI
+                                            </Title>
+                                            <Text c="dimmed" style={{ whiteSpace: 'pre-wrap' }}>
+                                                {descriptionAiError}
+                                            </Text>
+                                            <Group justify="flex-start">
+                                                <Button
+                                                    variant="default"
+                                                    onClick={() => setIsDescriptionAiPopoverOpen(false)}
+                                                >
+                                                    Закрыть
+                                                </Button>
                                             </Group>
-                                        ))
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Title order={5}>Ответ AI:</Title>
+                                            <Text style={{ whiteSpace: 'pre-wrap' }}>
+                                                {descriptionAiText ?? ''}
+                                            </Text>
+                                            {!!descriptionAiText && (
+                                                <>
+                                                    <Divider />
+                                                    <Group align="flex-start" grow>
+                                                        <Stack gap={6}>
+                                                            <Text fw={600} size="sm">
+                                                                Было
+                                                            </Text>
+                                                            <Paper withBorder p="sm" radius="md">
+                                                                <Text style={{ whiteSpace: 'pre-wrap' }}>
+                                                                    {descriptionAiBeforeText || '—'}
+                                                                </Text>
+                                                            </Paper>
+                                                        </Stack>
+                                                        <Stack gap={6}>
+                                                            <Text fw={600} size="sm">
+                                                                Стало
+                                                            </Text>
+                                                            <Paper withBorder p="sm" radius="md">
+                                                                <DiffText
+                                                                    before={descriptionAiBeforeText || ''}
+                                                                    after={descriptionAiText}
+                                                                />
+                                                            </Paper>
+                                                        </Stack>
+                                                    </Group>
+                                                </>
+                                            )}
+                                            <Group justify="flex-start">
+                                                <Button
+                                                    onClick={() => {
+                                                        form.setFieldValue('description', descriptionAiText ?? '');
+                                                        setIsDescriptionAiPopoverOpen(false);
+                                                    }}
+                                                    disabled={!descriptionAiText}
+                                                >
+                                                    Применить
+                                                </Button>
+                                                <Button
+                                                    variant="default"
+                                                    onClick={() => setIsDescriptionAiPopoverOpen(false)}
+                                                >
+                                                    Закрыть
+                                                </Button>
+                                            </Group>
+                                        </>
                                     )}
                                 </Stack>
-                            </ScrollArea>
+                            </Popover.Dropdown>
+                        </Popover>
 
-                            <Group align="flex-end" wrap="nowrap">
-                                <Textarea
-                                    flex={1}
-                                    placeholder="Ваш вопрос…"
-                                    minRows={2}
-                                    autosize
-                                    value={chatDraft}
-                                    onChange={e => setChatDraft(e.currentTarget.value)}
-                                />
-                                <Button
-                                    loading={chatMutation.isPending}
-                                    disabled={!chatDraft.trim()}
-                                    onClick={() => {
-                                        const userMessage: AiChatMessage = {
-                                            role: 'user',
-                                            content: chatDraft.trim(),
-                                        };
-                                        const next = [...chatMessages, userMessage];
-                                        setChatMessages(next);
-                                        setChatDraft('');
-                                        chatMutation.mutate(next);
-                                    }}
-                                >
-                                    Отправить
-                                </Button>
-                            </Group>
-                        </Stack>
-                    </Paper>
+                    </Stack>
+
+                    <Group justify="flex-start" mt="sm">
+                        <Button
+                            onClick={() => {
+                                const result = form.validate();
+                                if (result.hasErrors) return;
+                                updateAdMutation.mutate(form.values);
+                            }}
+                            disabled={!requiredOk || updateAdMutation.isPending}
+                            loading={updateAdMutation.isPending}
+                        >
+                            Сохранить
+                        </Button>
+                        <Button variant="default" component={Link} to={`/ads/${id}`}>
+                            Отменить
+                        </Button>
+                    </Group>
                 </Stack>
+            </Container>
 
-                <Group justify="flex-start" mt="sm">
-                    <Button
-                        onClick={() => {
-                            const result = form.validate();
-                            if (result.hasErrors) return;
-                            updateAdMutation.mutate(form.values);
-                        }}
-                        disabled={!requiredOk || updateAdMutation.isPending}
-                        loading={updateAdMutation.isPending}
+            <Popover
+                position="top-end"
+                withArrow
+                shadow="md"
+                opened={isChatWidgetOpen}
+                onChange={setIsChatWidgetOpen.toggle}
+                closeOnClickOutside
+                closeOnEscape
+            >
+                <Popover.Target>
+                    <ActionIcon
+                        onClick={() => setIsChatWidgetOpen.open()}
+                        variant="filled"
+                        size={52}
+                        radius={999}
+                        aria-label="Открыть чат с AI"
+                        style={{ position: 'fixed', right: 24, bottom: 24, zIndex: 3000 }}
                     >
-                        Сохранить
-                    </Button>
-                    <Button variant="default" component={Link} to={`/ads/${id}`}>
-                        Отменить
-                    </Button>
-                </Group>
-            </Stack>
-        </Container>
+                        <MdChatBubbleOutline size={22} />
+                    </ActionIcon>
+                </Popover.Target>
+                <Popover.Dropdown>
+                    <Stack gap="sm" w={420}>
+                        <Group justify="space-between" align="center">
+                            <Title order={5}>Чат с AI</Title>
+                            <ActionIcon
+                                variant="subtle"
+                                color="gray"
+                                aria-label="Закрыть чат"
+                                onClick={() => setIsChatWidgetOpen.close()}
+                            >
+                                <MdOutlineClear size={18} />
+                            </ActionIcon>
+                        </Group>
+                        <Paper withBorder radius="md" p="sm">
+                            <Stack gap="sm">
+                                <ScrollArea h={260} offsetScrollbars>
+                                    <Stack gap="xs">
+                                        {chatMessages.length === 0 ? (
+                                            <Text c="dimmed">
+                                                Задайте уточняющий вопрос по этому объявлению — контекст передаётся автоматически.
+                                            </Text>
+                                        ) : (
+                                            chatMessages.map((m, idx) => (
+                                                <Group
+                                                    key={idx}
+                                                    justify={m.role === 'user' ? 'flex-end' : 'flex-start'}
+                                                >
+                                                    <Paper
+                                                        withBorder
+                                                        radius="md"
+                                                        p="sm"
+                                                        style={{
+                                                            maxWidth: 320,
+                                                            background:
+                                                                m.role === 'user'
+                                                                    ? 'rgba(34, 139, 230, 0.08)'
+                                                                    : undefined,
+                                                        }}
+                                                    >
+                                                        <Text fw={600} size="xs" c="dimmed" mb={4}>
+                                                            {m.role === 'user' ? 'Вы' : 'AI'}
+                                                        </Text>
+                                                        <Text style={{ whiteSpace: 'pre-wrap' }}>
+                                                            {m.content}
+                                                        </Text>
+                                                    </Paper>
+                                                </Group>
+                                            ))
+                                        )}
+                                    </Stack>
+                                </ScrollArea>
+
+                                <Group align="flex-end" wrap="nowrap">
+                                    <Textarea
+                                        flex={1}
+                                        placeholder="Ваш вопрос…"
+                                        minRows={2}
+                                        autosize
+                                        value={chatDraft}
+                                        onChange={e => setChatDraft(e.currentTarget.value)}
+                                    />
+                                    <Button
+                                        loading={chatMutation.isPending}
+                                        disabled={!chatDraft.trim()}
+                                        onClick={() => {
+                                            const userMessage: AiChatMessage = {
+                                                role: 'user',
+                                                content: chatDraft.trim(),
+                                            };
+                                            const next = [...chatMessages, userMessage];
+                                            setChatMessages(next);
+                                            setChatDraft('');
+                                            chatMutation.mutate(next);
+                                        }}
+                                    >
+                                        Отправить
+                                    </Button>
+                                </Group>
+                            </Stack>
+                        </Paper>
+                    </Stack>
+                </Popover.Dropdown>
+            </Popover>
+        </>
     );
 }
