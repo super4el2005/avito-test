@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { translateByMap } from './translateByMap';
+import { translateByMap } from './translate-by-map';
 
 describe('translateByMap', () => {
   it('returns translated value when key exists', () => {

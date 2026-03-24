@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { PropsWithChildren } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import { useAsyncPopoverRequest } from './useAsyncPopoverRequest';
+import { useAsyncPopoverRequest } from './use-async-popover-request';
 
 import { act, renderHook, waitFor } from '@testing-library/react';
 

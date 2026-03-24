@@ -14,58 +14,31 @@ import {
   Title,
   useMantineTheme,
 } from '@mantine/core';
-import { useForm } from '@mantine/form';
-import { notifications } from '@mantine/notifications';
 
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useMemo } from 'react';
 
 import { MdInfo } from 'react-icons/md';
 
-import { Link, useNavigate, useParams } from 'react-router';
+import { Link, useParams } from 'react-router';
 
-import { ITEM_CATEGORIES, ItemUpdateInSchema } from '@ads/shared';
-
-import { aiSuggestDescription, aiSuggestPrice, apiAds } from '~/api';
+import { apiAds } from '~/api';
 import {
-  AI_REQUEST_ERROR_MESSAGE,
   AiChatWidget,
   AiPopoverActions,
   AiPopoverError,
   AiSuggestionPopover,
-  CATEGORIES_TRANSLATE,
   CategoryParamsFields,
   DiffText,
-  mapItemDetailsToEditFormValues,
-  type Category,
-  type ChatContextRef,
-  type ItemEditFormValues,
   type ItemDetailsResponse,
+  useAdEditAi,
+  useAdEditFormModel,
 } from '~/domain';
-import { queryClient } from '~/root';
-import { ClearFieldAction, extractErrorMessage, parseSuggestedNumber, useAsyncPopoverRequest } from '~/shared';
+import { ClearFieldAction } from '~/shared';
 
 function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
-  const navigate = useNavigate();
   const theme = useMantineTheme();
-
-  const form = useForm<ItemEditFormValues>({
-    initialValues: mapItemDetailsToEditFormValues(item),
-    validateInputOnBlur: true,
-    validate: (values: ItemEditFormValues) => ({
-      category: !values.category ? 'Категория должна быть заполнена' : null,
-      title: !values.title.trim() ? 'Название должно быть заполнено' : null,
-      price: values.price === null ? 'Цена должна быть заполнена' : null,
-    }),
-  });
-
-  const paramsByCategoryRef = useRef<Record<Category, unknown>>({
-    [ITEM_CATEGORIES.AUTO]: {},
-    [ITEM_CATEGORIES.REAL_ESTATE]: {},
-    [ITEM_CATEGORIES.ELECTRONICS]: {},
-    [item.category]: item.params ?? {},
-  });
 
   const warningStyles = useMemo(
     () => ({
@@ -76,128 +49,15 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
     [theme.colors.yellow],
   );
 
-  const maybeWarnIfEmpty = useCallback(
-    (isRequired: boolean, value: unknown) => {
-      if (isRequired) return undefined;
-      const isEmpty = value === undefined || value === null || (typeof value === 'string' && value.trim() === '');
-      return isEmpty ? warningStyles : undefined;
-    },
-    [warningStyles],
-  );
-
-  const setCategoryParams = useCallback(
-    (next: Record<string, unknown>) => {
-      form.setFieldValue('params', next as ItemEditFormValues['params']);
-    },
-    [form],
-  );
-
-  const categoryOptions = useMemo(
-    () =>
-      (Object.values(ITEM_CATEGORIES) as Category[]).map((value) => ({
-        value,
-        label: CATEGORIES_TRANSLATE[value],
-      })),
-    [],
-  );
-
-  const updateAdMutation = useMutation({
-    mutationFn: async (values: ItemEditFormValues) => {
-      if (values.price === null) {
-        throw new Error('Цена должна быть заполнена');
-      }
-      const payload = {
-        category: values.category,
-        title: values.title.trim(),
-        price: values.price,
-        description: values.description?.trim() ? values.description.trim() : undefined,
-        params: values.params ?? {},
-      };
-      const parsedPayload = ItemUpdateInSchema.safeParse(payload);
-
-      if (!parsedPayload.success) {
-        throw new Error('Данные формы не прошли валидацию перед сохранением');
-      }
-
-      return apiAds.put(`/items/${id}`, parsedPayload.data);
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['ads'] });
-      await queryClient.fetchQuery({
-        queryKey: ['ad', id],
-        queryFn: ({ signal }) => apiAds.get<ItemDetailsResponse>(`/items/${id}`, { signal }),
-      });
-
-      notifications.show({
-        position: 'top-right',
-        title: 'Изменения сохранены',
-        message: '',
-        color: 'green',
-      });
-      navigate(`/ads/${id}`);
-    },
-    onError: (error) => {
-      notifications.show({
-        position: 'top-right',
-        title: 'Ошибка сохранения',
-        message: extractErrorMessage(error, 'При попытке сохранить изменения произошла ошибка. Попробуйте ещё раз или зайдите позже.'),
-        color: 'red',
-      });
-    },
+  const adEditFormModel = useAdEditFormModel({
+    id,
+    item,
+    warningStyles,
   });
-
-  const priceAiState = useAsyncPopoverRequest<string>({
-    mutationFn: async () => {
-      const res = await aiSuggestPrice({
-        title: form.values.title,
-        category: form.values.category,
-        params: (form.values.params ?? {}) as Record<string, unknown>,
-        description: form.values.description || undefined,
-      });
-      return res.text;
-    },
-    mapErrorToMessage: (error) =>
-      extractErrorMessage(
-        error,
-        AI_REQUEST_ERROR_MESSAGE,
-      ),
+  const adEditAi = useAdEditAi({
+    id,
+    values: adEditFormModel.form.values,
   });
-
-  const [descriptionAiBeforeText, setDescriptionAiBeforeText] = useState<string>('');
-
-  const descriptionAiState = useAsyncPopoverRequest<string>({
-    mutationFn: async () => {
-      setDescriptionAiBeforeText(form.values.description);
-      const res = await aiSuggestDescription({
-        title: form.values.title,
-        category: form.values.category,
-        params: (form.values.params ?? {}) as Record<string, unknown>,
-        description: form.values.description || undefined,
-      });
-      return res.text;
-    },
-    mapErrorToMessage: (error) =>
-      extractErrorMessage(
-        error,
-        AI_REQUEST_ERROR_MESSAGE,
-      ),
-  });
-
-  const aiSuggestedPrice = useMemo(() => parseSuggestedNumber(priceAiState.data ?? ''), [priceAiState.data]);
-
-  const chatContext = useMemo<ChatContextRef>(
-    () => ({
-      id,
-      title: form.values.title,
-      category: form.values.category,
-      params: form.values.params ?? {},
-      price: form.values.price,
-      description: form.values.description || undefined,
-    }),
-    [id, form.values.title, form.values.category, form.values.params, form.values.price, form.values.description],
-  );
-
-  const requiredOk = Boolean(form.values.category) && Boolean(form.values.title.trim()) && form.values.price !== null;
 
   return (
     <>
@@ -209,30 +69,13 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
             <Select
               w={300}
               label="Категория"
-              data={categoryOptions}
+              data={adEditFormModel.categoryOptions}
               allowDeselect={false}
               withAsterisk
-              value={form.values.category}
-              onChange={(value) => {
-                const nextCategory = (value ?? ITEM_CATEGORIES.ELECTRONICS) as Category;
-                const currentCategory = form.values.category as Category;
-                paramsByCategoryRef.current[currentCategory] = form.values.params ?? {};
-
-                const nextParams = paramsByCategoryRef.current[nextCategory] ?? {};
-
-                form.setValues({
-                  ...form.values,
-                  category: nextCategory,
-                  params: nextParams as ItemEditFormValues['params'],
-                } as ItemEditFormValues);
-
-                form.setDirty({
-                  category: true,
-                  params: true,
-                });
-              }}
-              error={form.errors.category}
-              onBlur={() => form.validateField('category')}
+              value={adEditFormModel.form.values.category}
+              onChange={adEditFormModel.onCategoryChange}
+              error={adEditFormModel.form.errors.category}
+              onBlur={() => adEditFormModel.form.validateField('category')}
             />
 
             <Divider my={5} />
@@ -241,8 +84,8 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
                 label="Название"
                 withAsterisk
                 placeholder="Название"
-                {...form.getInputProps('title')}
-                rightSection={form.values.title ? <ClearFieldAction onClick={() => form.setFieldValue('title', '')} /> : null}
+                {...adEditFormModel.form.getInputProps('title')}
+                rightSection={adEditFormModel.form.values.title ? <ClearFieldAction onClick={() => adEditFormModel.form.setFieldValue('title', '')} /> : null}
               />
 
               <Group align="flex-end">
@@ -252,37 +95,37 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
                   placeholder="Цена"
                   min={0}
                   hideControls
-                  value={form.values.price ?? undefined}
-                  onChange={(value) => form.setFieldValue('price', typeof value === 'number' ? value : null)}
-                  onBlur={() => form.validateField('price')}
-                  error={form.errors.price}
+                  value={adEditFormModel.form.values.price ?? undefined}
+                  onChange={(value) => adEditFormModel.form.setFieldValue('price', typeof value === 'number' ? value : null)}
+                  onBlur={() => adEditFormModel.form.validateField('price')}
+                  error={adEditFormModel.form.errors.price}
                   rightSection={
-                    form.values.price !== null ? (
-                      <ClearFieldAction onClick={() => form.setFieldValue('price', null)} />
+                    adEditFormModel.form.values.price !== null ? (
+                      <ClearFieldAction onClick={() => adEditFormModel.form.setFieldValue('price', null)} />
                     ) : null
                   }
                 />
                 <AiSuggestionPopover
-                  isOpen={priceAiState.isOpen}
-                  setIsOpen={priceAiState.setIsOpen}
-                  isPending={priceAiState.isPending}
-                  hasEverRun={priceAiState.hasEverRun}
-                  onRun={priceAiState.run}
+                  isOpen={adEditAi.priceAiState.isOpen}
+                  setIsOpen={adEditAi.priceAiState.setIsOpen}
+                  isPending={adEditAi.priceAiState.isPending}
+                  hasEverRun={adEditAi.priceAiState.hasEverRun}
+                  onRun={adEditAi.priceAiState.run}
                   buttonLabel="Узнать рыночную цену"
                 >
-                  {priceAiState.error ? (
-                    <AiPopoverError message={priceAiState.error} onClose={() => priceAiState.setIsOpen(false)} />
+                  {adEditAi.priceAiState.error ? (
+                    <AiPopoverError message={adEditAi.priceAiState.error} onClose={() => adEditAi.priceAiState.setIsOpen(false)} />
                   ) : (
                     <>
                       <Title order={5}>Ответ AI:</Title>
-                      <Text style={{ whiteSpace: 'pre-wrap' }}>{priceAiState.data ?? ''}</Text>
+                      <Text style={{ whiteSpace: 'pre-wrap' }}>{adEditAi.priceAiState.data ?? ''}</Text>
                       <AiPopoverActions
                         onApply={() => {
-                          if (aiSuggestedPrice !== null) form.setFieldValue('price', aiSuggestedPrice);
-                          priceAiState.setIsOpen(false);
+                          if (adEditAi.aiSuggestedPrice !== null) adEditFormModel.form.setFieldValue('price', adEditAi.aiSuggestedPrice);
+                          adEditAi.priceAiState.setIsOpen(false);
                         }}
-                        onClose={() => priceAiState.setIsOpen(false)}
-                        isApplyDisabled={aiSuggestedPrice === null}
+                        onClose={() => adEditAi.priceAiState.setIsOpen(false)}
+                        isApplyDisabled={adEditAi.aiSuggestedPrice === null}
                       />
                     </>
                   )}
@@ -297,10 +140,10 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
             <Title order={4}>Характеристики</Title>
             <Container ml={0} w={600} p={0}>
               <CategoryParamsFields
-                category={form.values.category}
-                params={(form.values.params ?? {}) as Record<string, unknown>}
-                setParams={setCategoryParams}
-                maybeWarnIfEmpty={maybeWarnIfEmpty}
+                category={adEditFormModel.form.values.category}
+                params={(adEditFormModel.form.values.params ?? {}) as Record<string, unknown>}
+                setParams={adEditFormModel.setCategoryParams}
+                maybeWarnIfEmpty={adEditFormModel.maybeWarnIfEmpty}
               />
             </Container>
           </Stack>
@@ -313,31 +156,31 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
               placeholder="Описание"
               minRows={5}
               autosize
-              value={form.values.description}
-              onChange={(e) => form.setFieldValue('description', e.currentTarget.value)}
+              value={adEditFormModel.form.values.description}
+              onChange={(e) => adEditFormModel.form.setFieldValue('description', e.currentTarget.value)}
               rightSection={
-                form.values.description ? (
-                  <ClearFieldAction onClick={() => form.setFieldValue('description', '')} />
+                adEditFormModel.form.values.description ? (
+                  <ClearFieldAction onClick={() => adEditFormModel.form.setFieldValue('description', '')} />
                 ) : null
               }
-              styles={maybeWarnIfEmpty(false, form.values.description)}
+              styles={adEditFormModel.maybeWarnIfEmpty(false, adEditFormModel.form.values.description)}
             />
             <AiSuggestionPopover
-              isOpen={descriptionAiState.isOpen}
-              setIsOpen={descriptionAiState.setIsOpen}
-              isPending={descriptionAiState.isPending}
-              hasEverRun={descriptionAiState.hasEverRun}
-              onRun={descriptionAiState.run}
+              isOpen={adEditAi.descriptionAiState.isOpen}
+              setIsOpen={adEditAi.descriptionAiState.setIsOpen}
+              isPending={adEditAi.descriptionAiState.isPending}
+              hasEverRun={adEditAi.descriptionAiState.hasEverRun}
+              onRun={adEditAi.descriptionAiState.run}
               buttonWidth="min-content"
-              buttonLabel={form.values.description.trim() ? 'Улучшить описание' : 'Придумать описание'}
+              buttonLabel={adEditFormModel.form.values.description.trim() ? 'Улучшить описание' : 'Придумать описание'}
             >
-              {descriptionAiState.error ? (
-                <AiPopoverError message={descriptionAiState.error} onClose={() => descriptionAiState.setIsOpen(false)} />
+              {adEditAi.descriptionAiState.error ? (
+                <AiPopoverError message={adEditAi.descriptionAiState.error} onClose={() => adEditAi.descriptionAiState.setIsOpen(false)} />
               ) : (
                 <>
                   <Title order={5}>Ответ AI:</Title>
-                  <Text style={{ whiteSpace: 'pre-wrap' }}>{descriptionAiState.data ?? ''}</Text>
-                  {!!descriptionAiState.data && (
+                  <Text style={{ whiteSpace: 'pre-wrap' }}>{adEditAi.descriptionAiState.data ?? ''}</Text>
+                  {!!adEditAi.descriptionAiState.data && (
                     <>
                       <Divider />
                       <Group align="flex-start" grow>
@@ -346,7 +189,7 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
                             Было
                           </Text>
                           <Paper withBorder p="sm" radius="md">
-                            <Text style={{ whiteSpace: 'pre-wrap' }}>{descriptionAiBeforeText || '—'}</Text>
+                            <Text style={{ whiteSpace: 'pre-wrap' }}>{adEditAi.descriptionAiBeforeText || '—'}</Text>
                           </Paper>
                         </Stack>
                         <Stack gap={6}>
@@ -354,7 +197,7 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
                             Стало
                           </Text>
                           <Paper withBorder p="sm" radius="md">
-                            <DiffText before={descriptionAiBeforeText || ''} after={descriptionAiState.data} />
+                            <DiffText before={adEditAi.descriptionAiBeforeText || ''} after={adEditAi.descriptionAiState.data} />
                           </Paper>
                         </Stack>
                       </Group>
@@ -362,11 +205,11 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
                   )}
                   <AiPopoverActions
                     onApply={() => {
-                      form.setFieldValue('description', descriptionAiState.data ?? '');
-                      descriptionAiState.setIsOpen(false);
+                      adEditFormModel.form.setFieldValue('description', adEditAi.descriptionAiState.data ?? '');
+                      adEditAi.descriptionAiState.setIsOpen(false);
                     }}
-                    onClose={() => descriptionAiState.setIsOpen(false)}
-                    isApplyDisabled={!descriptionAiState.data}
+                    onClose={() => adEditAi.descriptionAiState.setIsOpen(false)}
+                    isApplyDisabled={!adEditAi.descriptionAiState.data}
                   />
                 </>
               )}
@@ -376,12 +219,12 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
           <Group justify="flex-start" mt="sm">
             <Button
               onClick={() => {
-                const result = form.validate();
+                const result = adEditFormModel.form.validate();
                 if (result.hasErrors) return;
-                updateAdMutation.mutate(form.values);
+                adEditFormModel.updateAdMutation.mutate(adEditFormModel.form.values);
               }}
-              disabled={!requiredOk || updateAdMutation.isPending}
-              loading={updateAdMutation.isPending}
+              disabled={!adEditFormModel.requiredOk || adEditFormModel.updateAdMutation.isPending}
+              loading={adEditFormModel.updateAdMutation.isPending}
             >
               Сохранить
             </Button>
@@ -392,7 +235,7 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
         </Stack>
       </Container>
 
-      <AiChatWidget itemContext={chatContext} />
+      <AiChatWidget itemContext={adEditAi.chatContext} />
     </>
   );
 }

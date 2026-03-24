@@ -16,6 +16,10 @@ pnpm install
 ### Dev (по умолчанию: GigaChat)
 
 ```bash
+pnpm dev
+или
+```
+```bash
 pnpm run dev
 ```
 
@@ -25,21 +29,10 @@ pnpm run dev
 pnpm run dev:gigachat
 ```
 
-Что запускается:
-
-- frontend + server
-- `ollama serve`
-
-### Dev с GigaChat
-
+### Dev (Ollama)
 ```bash
-pnpm run dev:gigachat
+pnpm run dev:ollama
 ```
-
-Что запускается:
-
-- frontend + server
-- без `ollama serve`
 
 ## Production запуск
 
@@ -54,33 +47,11 @@ pnpm run prod
 ```bash
 pnpm run prod:gigachat
 ```
-
-Что запускается:
-
-- сборка frontend
-- frontend server
-- backend server
-- `ollama serve`
-
-### Prod с GigaChat
-
+### Dev (Ollama)
 ```bash
-pnpm run prod:gigachat
+pnpm run prod:ollama
 ```
 
-Что запускается:
-
-- сборка frontend
-- frontend server
-- backend server
-- без `ollama serve`
-
-## AI-провайдеры
-
-Выбор провайдера делается через `VITE_AI_PROVIDER` внутри скриптов:
-
-- `dev` / `prod` -> `gigachat`
-- `dev:ollama` / `prod:ollama` -> `ollama`
 
 ## Настройка GigaChat
 

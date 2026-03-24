@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { useUiPreference } from './useUiPreference';
+import { useUiPreference } from './use-ui-preference';
 
 import { act, renderHook } from '@testing-library/react';
 

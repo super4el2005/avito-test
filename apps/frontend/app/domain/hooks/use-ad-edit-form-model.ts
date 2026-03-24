@@ -1,0 +1,147 @@
+import { useForm } from '@mantine/form';
+import { notifications } from '@mantine/notifications';
+
+import { useMutation } from '@tanstack/react-query';
+
+import { useCallback, useMemo, useRef } from 'react';
+
+import { useNavigate } from 'react-router';
+
+import { ITEM_CATEGORIES, ItemUpdateInSchema } from '@ads/shared';
+
+import type { WarningInputStyles } from '../components/category-params-fields';
+import { CATEGORIES_TRANSLATE } from '../models/constants';
+import { mapItemDetailsToEditFormValues } from '../models/mappers';
+import type { Category, ItemDetailsResponse, ItemEditFormValues } from '../models/types';
+
+import { apiAds } from '~/api';
+import { queryClient } from '~/root';
+import { extractErrorMessage } from '~/shared';
+
+type UseAdEditFormModelParams = {
+  id: string;
+  item: ItemDetailsResponse;
+  warningStyles: WarningInputStyles;
+};
+
+export function useAdEditFormModel({ id, item, warningStyles }: UseAdEditFormModelParams) {
+  const navigate = useNavigate();
+
+  const form = useForm<ItemEditFormValues>({
+    initialValues: mapItemDetailsToEditFormValues(item),
+    validateInputOnBlur: true,
+    validate: (values: ItemEditFormValues) => ({
+      category: !values.category ? 'Категория должна быть заполнена' : null,
+      title: !values.title.trim() ? 'Название должно быть заполнено' : null,
+      price: values.price === null ? 'Цена должна быть заполнена' : null,
+    }),
+  });
+
+  const paramsByCategoryRef = useRef<Record<Category, unknown>>({
+    [ITEM_CATEGORIES.AUTO]: {},
+    [ITEM_CATEGORIES.REAL_ESTATE]: {},
+    [ITEM_CATEGORIES.ELECTRONICS]: {},
+    [item.category]: item.params ?? {},
+  });
+
+  const maybeWarnIfEmpty = useCallback(
+    (isRequired: boolean, value: unknown) => {
+      if (isRequired) return undefined;
+      const isEmpty = value === undefined || value === null || (typeof value === 'string' && value.trim() === '');
+      return isEmpty ? warningStyles : undefined;
+    },
+    [warningStyles],
+  );
+
+  const setCategoryParams = useCallback(
+    (next: Record<string, unknown>) => {
+      form.setFieldValue('params', next as ItemEditFormValues['params']);
+    },
+    [form],
+  );
+
+  const categoryOptions = useMemo(
+    () =>
+      (Object.values(ITEM_CATEGORIES) as Category[]).map((value) => ({
+        value,
+        label: CATEGORIES_TRANSLATE[value],
+      })),
+    [],
+  );
+
+  const updateAdMutation = useMutation({
+    mutationFn: async (values: ItemEditFormValues) => {
+      if (values.price === null) {
+        throw new Error('Цена должна быть заполнена');
+      }
+      const payload = {
+        category: values.category,
+        title: values.title.trim(),
+        price: values.price,
+        description: values.description?.trim() ? values.description.trim() : undefined,
+        params: values.params ?? {},
+      };
+      const parsedPayload = ItemUpdateInSchema.safeParse(payload);
+
+      if (!parsedPayload.success) {
+        throw new Error('Данные формы не прошли валидацию перед сохранением');
+      }
+
+      return apiAds.put(`/items/${id}`, parsedPayload.data);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['ads'] });
+      await queryClient.fetchQuery({
+        queryKey: ['ad', id],
+        queryFn: ({ signal }) => apiAds.get<ItemDetailsResponse>(`/items/${id}`, { signal }),
+      });
+
+      notifications.show({
+        position: 'top-right',
+        title: 'Изменения сохранены',
+        message: '',
+        color: 'green',
+      });
+      navigate(`/ads/${id}`);
+    },
+    onError: (error) => {
+      notifications.show({
+        position: 'top-right',
+        title: 'Ошибка сохранения',
+        message: extractErrorMessage(error, 'При попытке сохранить изменения произошла ошибка. Попробуйте ещё раз или зайдите позже.'),
+        color: 'red',
+      });
+    },
+  });
+
+  const requiredOk = Boolean(form.values.category) && Boolean(form.values.title.trim()) && form.values.price !== null;
+
+  function onCategoryChange(value: string | null) {
+    const nextCategory = (value ?? ITEM_CATEGORIES.ELECTRONICS) as Category;
+    const currentCategory = form.values.category as Category;
+    paramsByCategoryRef.current[currentCategory] = form.values.params ?? {};
+
+    const nextParams = paramsByCategoryRef.current[nextCategory] ?? {};
+
+    form.setValues({
+      ...form.values,
+      category: nextCategory,
+      params: nextParams as ItemEditFormValues['params'],
+    } as ItemEditFormValues);
+
+    form.setDirty({
+      category: true,
+      params: true,
+    });
+  }
+
+  return {
+    form,
+    maybeWarnIfEmpty,
+    setCategoryParams,
+    categoryOptions,
+    updateAdMutation,
+    requiredOk,
+    onCategoryChange,
+  };
+}

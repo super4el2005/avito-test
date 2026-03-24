@@ -1,4 +1,4 @@
-import { ITEM_CATEGORIES, type Item, type ItemSortColumn, type SortDirection } from '@ads/shared';
+import { type Item, ITEM_CATEGORIES, type ItemSortColumn, type SortDirection } from '@ads/shared';
 
 export type Category = (typeof ITEM_CATEGORIES)[keyof typeof ITEM_CATEGORIES];
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseSuggestedNumber } from './parseSuggestedNumber';
+import { parseSuggestedNumber } from './parse-suggested-number';
 
 describe('parseSuggestedNumber', () => {
   it('uses range average when range exists', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { extractAverageFromNumberRange, extractFirstPositiveNumber } from './extractFirstPositiveNumber';
+import { extractAverageFromNumberRange, extractFirstPositiveNumber } from './extract-first-positive-number';
 
 describe('extractFirstPositiveNumber', () => {
   it('extracts first positive number from text', () => {

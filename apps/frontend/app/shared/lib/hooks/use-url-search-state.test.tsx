@@ -3,7 +3,7 @@ import { MemoryRouter } from 'react-router';
 import type { PropsWithChildren } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import { useUrlSearchState } from './useUrlSearchState';
+import { useUrlSearchState } from './use-url-search-state';
 
 import { act, renderHook, waitFor } from '@testing-library/react';
 

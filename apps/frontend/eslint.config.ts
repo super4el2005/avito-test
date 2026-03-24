@@ -13,6 +13,13 @@ const isComponentFile = (filename: string) => {
   return /\/app\/components\/.+\.(tsx|jsx)$/.test(normalized);
 };
 
+const isDomainOrSharedFile = (filename: string) => {
+  const normalized = filename.split(path.sep).join('/');
+  return /\/app\/(domain|shared)\//.test(normalized);
+};
+
+const isLowerKebabOrOneWord = (fileBaseName: string) => /^[a-z0-9]+(?:-[a-z0-9]+)*(?:\.(?:test|spec))?$/.test(fileBaseName);
+
 const toPascalCase = (fileBaseName: string) =>
   fileBaseName
     .split('-')
@@ -110,6 +117,41 @@ const componentNamingPlugin = {
         };
       },
     },
+    'domain-shared-file-name': {
+      meta: {
+        type: 'problem' as const,
+        schema: [],
+      },
+      create(context: unknown) {
+        const ruleContext = context as {
+          filename?: string;
+          getFilename: () => string;
+          report: (descriptor: { node: unknown; message: string }) => void;
+        };
+        const filename = ruleContext.filename ?? ruleContext.getFilename();
+
+        if (!filename || filename === '<input>' || !isDomainOrSharedFile(filename)) {
+          return {};
+        }
+
+        const parsed = path.parse(filename);
+        const fileBaseName = parsed.name;
+
+        if (isLowerKebabOrOneWord(fileBaseName)) {
+          return {};
+        }
+
+        return {
+          Program(node: unknown) {
+            ruleContext.report({
+              node,
+              message:
+                'Файлы в app/domain и app/shared должны быть в lower kebab-case (пример: use-ad-edit-ai.ts) или одним словом в нижнем регистре (пример: index.ts).',
+            });
+          },
+        };
+      },
+    },
   },
 };
 
@@ -149,6 +191,7 @@ export default defineConfig([
       ],
       'simple-import-sort/exports': 'error',
       'naming/component-file-and-name': 'error',
+      'naming/domain-shared-file-name': 'error',
       '@typescript-eslint/no-explicit-any': 'error',
     },
   },

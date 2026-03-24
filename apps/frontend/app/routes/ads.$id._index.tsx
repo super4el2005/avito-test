@@ -7,9 +7,9 @@ import { MdArrowBack, MdEdit, MdInfo } from 'react-icons/md';
 import { Link, useParams } from 'react-router';
 
 import { apiAds } from '~/api';
-import { type ItemDetailsResponse, formatDateTimeRu, isKnownParamLabel, translateParamLabel, translateParamValue } from '~/domain';
-import { ImagePlaceholder } from '~/shared/components/image-placeholder';
+import { formatDateTimeRu, isKnownParamLabel, type ItemDetailsResponse, translateParamLabel, translateParamValue } from '~/domain';
 import { extractErrorMessage } from '~/shared';
+import { ImagePlaceholder } from '~/shared/components/image-placeholder';
 
 export default function () {
   const params = useParams();
@@ -91,7 +91,7 @@ export default function () {
     <Container size={'xl'} pt={30}>
       <Group justify="space-between">
         <Title order={3}>{ad?.title}</Title>
-        <Title order={3}>{ad?.price}</Title>
+        <Title order={3}>{ad?.price} ₽</Title>
       </Group>
 
       <Group mt={12} justify="space-between">

@@ -1,5 +1,4 @@
 import { ActionIcon, Button, Group, Paper, Popover, ScrollArea, Stack, Text, Textarea, Title } from '@mantine/core';
-
 import { useDisclosure } from '@mantine/hooks';
 
 import { useMutation } from '@tanstack/react-query';
@@ -10,10 +9,10 @@ import { memo, type ReactNode, useMemo, useState } from 'react';
 
 import { MdChatBubbleOutline, MdLightbulbOutline, MdOutlineClear } from 'react-icons/md';
 
+import type { Category } from '../models/types';
+
 import type { AiChatMessage } from '~/api';
 import { aiChatAboutItem } from '~/api';
-
-import type { Category } from '../models/types';
 
 export const AI_REQUEST_ERROR_MESSAGE = 'Произошла ошибка при запросе к AI\nПопробуйте повторить запрос или закройте уведомление';
 

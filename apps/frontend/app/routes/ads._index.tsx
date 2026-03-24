@@ -15,7 +15,6 @@ import {
   Skeleton,
   Stack,
   Switch,
-  Text,
   TextInput,
   Title,
 } from '@mantine/core';
@@ -33,7 +32,7 @@ import {
 } from '@ads/shared';
 
 import { apiAds } from '~/api';
-import { AdGridCard, AdListCard, type AdsResponse, CATEGORIES_FORM, LIMIT_ADS, SORT_FORM, getAdsPlural } from '~/domain';
+import { AdGridCard, AdListCard, type AdsResponse, CATEGORIES_FORM, getAdsPlural,LIMIT_ADS, SORT_FORM } from '~/domain';
 import { useUiPreference, useUrlSearchState } from '~/shared';
 
 export default function () {

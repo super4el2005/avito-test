@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { extractErrorMessage } from './extractErrorMessage';
+import { extractErrorMessage } from './extract-error-message';
 
 describe('extractErrorMessage', () => {
   it('returns string error from axios-like response', () => {

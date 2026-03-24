@@ -1,4 +1,4 @@
-import { extractAverageFromNumberRange, extractFirstPositiveNumber } from './extractFirstPositiveNumber';
+import { extractAverageFromNumberRange, extractFirstPositiveNumber } from './extract-first-positive-number';
 
 export function parseSuggestedNumber(text: string): number | null {
   const rangeAverage = extractAverageFromNumberRange(text);
