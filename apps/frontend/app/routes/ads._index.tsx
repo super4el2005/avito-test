@@ -73,7 +73,7 @@ export default function () {
     const [viewMode, setViewMode] = useLocalStorage<
         'grid' | 'list'
     >({
-        key: 'color-scheme',
+        key: 'view-mode',
         defaultValue: 'grid',
     });
 

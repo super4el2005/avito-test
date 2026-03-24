@@ -7,8 +7,10 @@ import {
     Container,
     Divider,
     Group,
+    Paper,
     NumberInput,
     Popover,
+    ScrollArea,
     Select,
     Stack,
     Text,
@@ -23,7 +25,8 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { MdInfo, MdOutlineClear, MdLightbulbOutline } from 'react-icons/md';
 import { Link, useNavigate, useParams } from 'react-router';
-import { aiSuggestDescription, aiSuggestPrice, apiAds } from '~/api';
+import { aiChatAboutItem, aiSuggestDescription, aiSuggestPrice, apiAds, type AiChatMessage } from '~/api';
+import { diffWordsWithSpace } from 'diff';
 
 type Category = (typeof ITEM_CATEGORIES)[keyof typeof ITEM_CATEGORIES];
 
@@ -117,6 +120,30 @@ const parsePriceFromAiText = (text: string): number | null => {
     }
 
     return null;
+};
+
+const DiffText = ({ before, after }: { before: string; after: string }) => {
+    const parts = diffWordsWithSpace(before ?? '', after ?? '');
+    return (
+        <Text style={{ whiteSpace: 'pre-wrap', lineHeight: 1.35 }}>
+            {parts.map((part, idx) => {
+                const bg = part.added ? 'rgba(64, 192, 87, 0.18)' : part.removed ? 'rgba(250, 82, 82, 0.16)' : undefined;
+                const decoration = part.removed ? 'line-through' : undefined;
+                return (
+                    <Text
+                        key={idx}
+                        span
+                        style={{
+                            background: bg,
+                            textDecoration: decoration,
+                        }}
+                    >
+                        {part.value}
+                    </Text>
+                );
+            })}
+        </Text>
+    );
 };
 
 const createEmptyValues = (category: Category): EditFormValues => {
@@ -283,9 +310,11 @@ export default function AdsEditRoute() {
     const [descriptionAiText, setDescriptionAiText] = useState<string | null>(null);
     const [descriptionAiError, setDescriptionAiError] = useState<string | null>(null);
     const [hasDescriptionAiEverRun, setHasDescriptionAiEverRun] = useState(false);
+    const [descriptionAiBeforeText, setDescriptionAiBeforeText] = useState<string>('');
 
     const descriptionAiMutation = useMutation({
         mutationFn: async () => {
+            setDescriptionAiBeforeText(form.values.description);
             const res = await aiSuggestDescription({
                 title: form.values.title,
                 category: form.values.category,
@@ -305,6 +334,42 @@ export default function AdsEditRoute() {
             setDescriptionAiText(null);
             setDescriptionAiError(getAiErrorMessage(error));
             setIsDescriptionAiPopoverOpen(true);
+        },
+    });
+
+    const [chatMessages, setChatMessages] = useState<AiChatMessage[]>([]);
+    const [chatDraft, setChatDraft] = useState('');
+
+    const chatMutation = useMutation({
+        mutationFn: async (nextMessages: AiChatMessage[]) => {
+            const res = await aiChatAboutItem(
+                {
+                    itemContext: {
+                        id,
+                        title: form.values.title,
+                        category: form.values.category,
+                        params: (form.values.params ?? {}) as any,
+                        price: form.values.price,
+                        description: form.values.description || undefined,
+                    },
+                    messages: nextMessages,
+                },
+                undefined,
+            );
+            return res.text;
+        },
+        onSuccess: text => {
+            setChatMessages(prev => [...prev, { role: 'assistant', content: text }]);
+        },
+        onError: () => {
+            setChatMessages(prev => [
+                ...prev,
+                {
+                    role: 'assistant',
+                    content:
+                        'Произошла ошибка при запросе к AI. Попробуйте повторить вопрос.',
+                },
+            ]);
         },
     });
 
@@ -918,6 +983,34 @@ export default function AdsEditRoute() {
                                         <Text style={{ whiteSpace: 'pre-wrap' }}>
                                             {descriptionAiText ?? ''}
                                         </Text>
+                                        {!!descriptionAiText && (
+                                            <>
+                                                <Divider />
+                                                <Group align="flex-start" grow>
+                                                    <Stack gap={6}>
+                                                        <Text fw={600} size="sm">
+                                                            Было
+                                                        </Text>
+                                                        <Paper withBorder p="sm" radius="md">
+                                                            <Text style={{ whiteSpace: 'pre-wrap' }}>
+                                                                {descriptionAiBeforeText || '—'}
+                                                            </Text>
+                                                        </Paper>
+                                                    </Stack>
+                                                    <Stack gap={6}>
+                                                        <Text fw={600} size="sm">
+                                                            Стало
+                                                        </Text>
+                                                        <Paper withBorder p="sm" radius="md">
+                                                            <DiffText
+                                                                before={descriptionAiBeforeText || ''}
+                                                                after={descriptionAiText}
+                                                            />
+                                                        </Paper>
+                                                    </Stack>
+                                                </Group>
+                                            </>
+                                        )}
                                         <Group justify="flex-start">
                                             <Button
                                                 onClick={() => {
@@ -941,6 +1034,76 @@ export default function AdsEditRoute() {
                         </Popover.Dropdown>
                     </Popover>
 
+                </Stack>
+
+                <Divider />
+
+                <Stack gap="sm">
+                    <Title order={4}>Чат с AI</Title>
+                    <Paper withBorder radius="md" p="md">
+                        <Stack gap="sm">
+                            <ScrollArea h={220} offsetScrollbars>
+                                <Stack gap="xs">
+                                    {chatMessages.length === 0 ? (
+                                        <Text c="dimmed">
+                                            Задайте уточняющий вопрос по этому объявлению — контекст передаётся автоматически.
+                                        </Text>
+                                    ) : (
+                                        chatMessages.map((m, idx) => (
+                                            <Group key={idx} justify={m.role === 'user' ? 'flex-end' : 'flex-start'}>
+                                                <Paper
+                                                    withBorder
+                                                    radius="md"
+                                                    p="sm"
+                                                    style={{
+                                                        maxWidth: 520,
+                                                        background:
+                                                            m.role === 'user'
+                                                                ? 'rgba(34, 139, 230, 0.08)'
+                                                                : undefined,
+                                                    }}
+                                                >
+                                                    <Text fw={600} size="xs" c="dimmed" mb={4}>
+                                                        {m.role === 'user' ? 'Вы' : 'AI'}
+                                                    </Text>
+                                                    <Text style={{ whiteSpace: 'pre-wrap' }}>
+                                                        {m.content}
+                                                    </Text>
+                                                </Paper>
+                                            </Group>
+                                        ))
+                                    )}
+                                </Stack>
+                            </ScrollArea>
+
+                            <Group align="flex-end" wrap="nowrap">
+                                <Textarea
+                                    flex={1}
+                                    placeholder="Ваш вопрос…"
+                                    minRows={2}
+                                    autosize
+                                    value={chatDraft}
+                                    onChange={e => setChatDraft(e.currentTarget.value)}
+                                />
+                                <Button
+                                    loading={chatMutation.isPending}
+                                    disabled={!chatDraft.trim()}
+                                    onClick={() => {
+                                        const userMessage: AiChatMessage = {
+                                            role: 'user',
+                                            content: chatDraft.trim(),
+                                        };
+                                        const next = [...chatMessages, userMessage];
+                                        setChatMessages(next);
+                                        setChatDraft('');
+                                        chatMutation.mutate(next);
+                                    }}
+                                >
+                                    Отправить
+                                </Button>
+                            </Group>
+                        </Stack>
+                    </Paper>
                 </Stack>
 
                 <Group justify="flex-start" mt="sm">

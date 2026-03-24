@@ -13,8 +13,17 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
 
-import { MantineProvider, ColorSchemeScript, mantineHtmlProps } from '@mantine/core';
+import {
+  ActionIcon,
+  ColorSchemeScript,
+  MantineProvider,
+  Tooltip,
+  localStorageColorSchemeManager,
+  mantineHtmlProps,
+  useMantineColorScheme,
+} from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
+import { MdDarkMode, MdLightMode } from 'react-icons/md';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -25,6 +34,8 @@ const queryClient = new QueryClient({
     }
   }
 })
+
+const colorSchemeManager = localStorageColorSchemeManager({ key: 'color-scheme' });
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -45,10 +56,35 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
+function ThemeToggle() {
+  const { colorScheme, toggleColorScheme } = useMantineColorScheme();
+  const isDark = colorScheme === 'dark';
+
+  return (
+    <div style={{ position: 'fixed', top: 12, right: 12, zIndex: 1000 }}>
+      <Tooltip label={isDark ? 'Светлая тема' : 'Тёмная тема'} withArrow position="left">
+        <ActionIcon
+          size="lg"
+          radius="md"
+          variant="default"
+          aria-label="Переключить тему"
+          onClick={() => toggleColorScheme()}
+        >
+          {isDark ? <MdLightMode /> : <MdDarkMode />}
+        </ActionIcon>
+      </Tooltip>
+    </div>
+  );
+}
+
 export default function App() {
   return <QueryClientProvider client={queryClient}>
-    <MantineProvider>
+    <MantineProvider
+      colorSchemeManager={colorSchemeManager}
+      defaultColorScheme="auto"
+    >
       <Notifications />
+      <ThemeToggle />
       <Outlet />
     </MantineProvider>
   </QueryClientProvider>;

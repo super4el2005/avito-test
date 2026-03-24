@@ -44,6 +44,9 @@ importers:
       axios:
         specifier: ^1.13.6
         version: 1.13.6
+      diff:
+        specifier: ^8.0.2
+        version: 8.0.4
       isbot:
         specifier: ^5.1.36
         version: 5.1.36
@@ -1115,6 +1118,10 @@ packages:
 
   diff@4.0.4:
     resolution: {integrity: sha512-X07nttJQkwkfKfvTPG/KSnE2OMdcUCao6+eXF3wmnIQRn2aPAHH3VxDbDOdegkd6JbPsXqShpvEOHfAT+nCNwQ==}
+    engines: {node: '>=0.3.1'}
+
+  diff@8.0.4:
+    resolution: {integrity: sha512-DPi0FmjiSU5EvQV0++GFDOJ9ASQUVFh5kD+OzOnYdi7n3Wpm9hWWGfB/O2blfHcMVTL5WkQXSnRiK9makhrcnw==}
     engines: {node: '>=0.3.1'}
 
   dom-helpers@5.2.1:
@@ -3087,6 +3094,8 @@ snapshots:
   detect-node-es@1.1.0: {}
 
   diff@4.0.4: {}
+
+  diff@8.0.4: {}
 
   dom-helpers@5.2.1:
     dependencies:

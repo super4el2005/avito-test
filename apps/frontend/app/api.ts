@@ -100,3 +100,59 @@ export async function aiSuggestDescription(
 
     return { text };
 }
+
+export type AiChatMessage = {
+    role: 'user' | 'assistant';
+    content: string;
+};
+
+export type AiChatAboutItemInput = {
+    itemContext: {
+        id: string;
+        title: string;
+        category?: string;
+        params?: Record<string, unknown>;
+        price?: number | null;
+        description?: string;
+    };
+    messages: AiChatMessage[];
+};
+
+export async function aiChatAboutItem(
+    input: AiChatAboutItemInput,
+    signal?: AbortSignal,
+): Promise<{ text: string }> {
+    const system = [
+        `Ты помощник по созданию объявлений.`,
+        `Отвечай по-русски, кратко и по делу.`,
+        `Если не хватает данных — задай уточняющий вопрос.`,
+        ``,
+        `Контекст объявления (JSON):`,
+        JSON.stringify(input.itemContext),
+    ].join('\n');
+
+    // Ollama API: POST /api/chat
+    const res = await apiOllama.post(
+        '/api/chat',
+        {
+            model: 'llama3.1',
+            stream: false,
+            messages: [
+                { role: 'system', content: system },
+                ...input.messages,
+            ],
+        },
+        { signal },
+    );
+
+    const text =
+        typeof res.data?.message?.content === 'string'
+            ? res.data.message.content
+            : typeof res.data?.response === 'string'
+                ? res.data.response
+                : typeof res.data === 'string'
+                    ? res.data
+                    : JSON.stringify(res.data);
+
+    return { text };
+}
