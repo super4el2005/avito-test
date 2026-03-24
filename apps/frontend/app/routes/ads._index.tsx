@@ -8,7 +8,6 @@ import {
   Checkbox,
   Container,
   Group,
-  Image,
   Loader,
   Pagination,
   ScrollArea,
@@ -34,6 +33,7 @@ import { Link } from 'react-router';
 import { type Item, ITEM_CATEGORIES, type ItemSortColumn, type SortDirection } from '@ads/shared';
 
 import { apiAds } from '~/api';
+import { ImagePlaceholder } from '~/components/ImagePlaceholder';
 import { useUiPreference, useUrlSearchState } from '~/lib';
 
 type Category = (typeof ITEM_CATEGORIES)[keyof typeof ITEM_CATEGORIES];
@@ -99,7 +99,6 @@ type ResponseAds = {
 };
 
 const LIMIT_ADS = 10;
-const DEFAULT_AD_IMAGE = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQE7Ui111Q0ppxCJctMroRHTZyzWKB28EV8sg&s';
 
 const getAdsPlural = (n: number) => {
   const forms = ['объявление', 'объявления', 'объявлений'];
@@ -113,21 +112,12 @@ const getAdsPlural = (n: number) => {
 
 type AdCardProps = {
   ad: AdResponse;
-  prioritizeImage?: boolean;
 };
 
-const AdGridCard = memo(({ ad, prioritizeImage = false }: AdCardProps) => (
+const AdGridCard = memo(({ ad }: AdCardProps) => (
   <Card h={300} shadow="sm" padding="lg" radius="md" withBorder component={Link} to={`/ads/${ad.id}`}>
     <Card.Section>
-      <Image
-        src={DEFAULT_AD_IMAGE}
-        height={150}
-        w="100%"
-        alt={ad.title}
-        loading={prioritizeImage ? 'eager' : 'lazy'}
-        fetchPriority={prioritizeImage ? 'high' : 'auto'}
-        decoding="async"
-      />
+      <ImagePlaceholder h={150} w="100%" />
     </Card.Section>
 
     <Badge radius="md" pos={'absolute'} top={'47%'}>
@@ -149,19 +139,10 @@ const AdGridCard = memo(({ ad, prioritizeImage = false }: AdCardProps) => (
 ));
 AdGridCard.displayName = 'AdGridCard';
 
-const AdListCard = memo(({ ad, prioritizeImage = false }: AdCardProps) => (
+const AdListCard = memo(({ ad }: AdCardProps) => (
   <Card h={140} shadow="sm" radius="md" p={0} withBorder component={Link} to={`/ads/${ad.id}`}>
     <Group align="flex-start">
-      <img
-        src={DEFAULT_AD_IMAGE}
-        width={140}
-        height={140}
-        loading={prioritizeImage ? 'eager' : 'lazy'}
-        fetchPriority={prioritizeImage ? 'high' : 'auto'}
-        decoding="async"
-        alt={ad.title}
-        style={{ display: 'block', objectFit: 'cover' }}
-      />
+      <ImagePlaceholder w={140} h={140} style={{ display: 'block', flexShrink: 0 }} />
 
       <Stack m={0} gap={8} pt={5}>
         <Text>{CATEGORIES_TRANSLATE[ad.category]}</Text>
@@ -345,7 +326,7 @@ export default function () {
             {getAdsQuery.isError && <Alert color="red" icon={<MdInfo />} title="Ошибка"></Alert>}
             {viewMode === 'grid' && (
               <SimpleGrid cols={5} h={650}>
-                {!isDataLoading && !!ads.length && ads.map((ad, index) => <AdGridCard key={ad.id} ad={ad} prioritizeImage={index === 0} />)}
+                {!isDataLoading && !!ads.length && ads.map((ad) => <AdGridCard key={ad.id} ad={ad} />)}
                 {isDataLoading &&
                   [...new Array(LIMIT_ADS)].map((_, id) => (
                     <Card key={id} h={320} shadow="sm" padding="lg" radius="md" withBorder>
@@ -362,7 +343,7 @@ export default function () {
             {viewMode === 'list' && (
               <ScrollArea h={650}>
                 <Stack>
-                  {!isDataLoading && !!ads.length && ads.map((ad, index) => <AdListCard key={ad.id} ad={ad} prioritizeImage={index === 0} />)}
+                  {!isDataLoading && !!ads.length && ads.map((ad) => <AdListCard key={ad.id} ad={ad} />)}
                   {isDataLoading &&
                     [...new Array(LIMIT_ADS)].map((_, id) => (
                       <Card key={id} h={140} shadow="sm" radius="md" p={0} withBorder>

@@ -9,6 +9,7 @@ import { Link, useParams } from 'react-router';
 import { ITEM_CATEGORIES, type Item } from '@ads/shared';
 
 import { apiAds } from '~/api';
+import { ImagePlaceholder } from '~/components/ImagePlaceholder';
 import { extractErrorMessage, translateByMap } from '~/lib';
 
 type ItemDetailsResponse = Item & {
@@ -190,23 +191,10 @@ export default function () {
 
       <Group align="flex-start">
         <Stack>
-          <img
-            width={480}
-            height={360}
-            src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQE7Ui111Q0ppxCJctMroRHTZyzWKB28EV8sg&s"
-            alt=""
-            style={{ objectFit: 'cover' }}
-          />
+          <ImagePlaceholder w={480} h={360} iconSize={80} />
           <Group justify="space-between">
             {[...new Array(4)].map((_, index) => (
-              <img
-                key={index}
-                width={100}
-                height={70}
-                src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQE7Ui111Q0ppxCJctMroRHTZyzWKB28EV8sg&s"
-                alt=""
-                style={{ objectFit: 'cover' }}
-              />
+              <ImagePlaceholder key={index} w={100} h={70} iconSize={28} />
             ))}
           </Group>
         </Stack>
