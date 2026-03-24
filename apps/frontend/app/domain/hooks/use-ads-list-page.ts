@@ -119,14 +119,18 @@ export function useAdsListPage() {
 
   const handleQueryChange = useCallback(
     (value: string) => {
-      form.setFieldValue('q', value);
+      startUiTransition(() => {
+        form.setValues((prev) => ({ ...prev, q: value, page: 1 }));
+      });
     },
-    [form],
+    [form, startUiTransition],
   );
 
   const handleClearQuery = useCallback(() => {
-    form.setFieldValue('q', '');
-  }, [form]);
+    startUiTransition(() => {
+      form.setValues((prev) => ({ ...prev, q: '', page: 1 }));
+    });
+  }, [form, startUiTransition]);
 
   const handleSortChange = useCallback(
     (value: SortFormValue) => {
@@ -146,16 +150,20 @@ export function useAdsListPage() {
 
   const handleCategoriesChange = useCallback(
     (value: Category[]) => {
-      form.setFieldValue('categories', value);
+      startUiTransition(() => {
+        form.setValues((prev) => ({ ...prev, categories: value, page: 1 }));
+      });
     },
-    [form],
+    [form, startUiTransition],
   );
 
   const handleNeedsRevisionChange = useCallback(
     (value: boolean) => {
-      form.setFieldValue('needsRevision', value);
+      startUiTransition(() => {
+        form.setValues((prev) => ({ ...prev, needsRevision: value, page: 1 }));
+      });
     },
-    [form],
+    [form, startUiTransition],
   );
 
   const handleResetFilters = useCallback(() => {
