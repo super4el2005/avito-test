@@ -25,6 +25,8 @@ import { useForm } from '@mantine/form';
 
 import { useQuery } from '@tanstack/react-query';
 
+import { memo, useDeferredValue, useMemo, useTransition } from 'react';
+
 import { MdFormatListBulleted, MdGridView, MdInfo, MdOutlineClear, MdSearch } from 'react-icons/md';
 
 import { Link } from 'react-router';
@@ -88,6 +90,9 @@ type ResponseAds = {
 };
 
 const LIMIT_ADS = 10;
+const DEFAULT_AD_IMAGE =
+  'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQE7Ui111Q0ppxCJctMroRHTZyzWKB28EV8sg&s';
+
 const getAdsPlural = (n: number) => {
   const forms = ['объявление', 'объявления', 'объявлений'];
   const num = Math.abs(n) % 100;
@@ -98,8 +103,80 @@ const getAdsPlural = (n: number) => {
   return forms[2];
 };
 
+type AdCardProps = {
+  ad: AdResponse;
+};
+
+const AdGridCard = memo(({ ad }: AdCardProps) => (
+  <Card
+    h={300}
+    shadow="sm"
+    padding="lg"
+    radius="md"
+    withBorder
+    component={Link}
+    to={`/ads/${ad.id}`}
+  >
+    <Card.Section>
+      <Image
+        src={DEFAULT_AD_IMAGE}
+        height={150}
+        alt={ad.title}
+        loading="lazy"
+        decoding="async"
+      />
+    </Card.Section>
+
+    <Badge radius="md" pos={'absolute'} top={'47%'}>
+      {CATEGORIES_TRANSLATE[ad.category]}
+    </Badge>
+    <Stack gap="xs" mt="md">
+      <Text fw={500} lineClamp={2} style={{ minHeight: '48px' }}>
+        {ad.title}
+      </Text>
+      <Text>{ad.price} ₽</Text>
+
+      {ad.needsRevision && (
+        <Badge variant="dot" color="orange" w="fit-content">
+          Требует доработок
+        </Badge>
+      )}
+    </Stack>
+  </Card>
+));
+AdGridCard.displayName = 'AdGridCard';
+
+const AdListCard = memo(({ ad }: AdCardProps) => (
+  <Card h={140} shadow="sm" radius="md" p={0} withBorder component={Link} to={`/ads/${ad.id}`}>
+    <Group align="flex-start">
+      <img
+        src={DEFAULT_AD_IMAGE}
+        width={140}
+        height={140}
+        loading="lazy"
+        decoding="async"
+        alt={ad.title}
+        style={{ display: 'block', objectFit: 'cover' }}
+      />
+
+      <Stack m={0} gap={8} pt={5}>
+        <Text>{CATEGORIES_TRANSLATE[ad.category]}</Text>
+        <Text>{ad.title}</Text>
+        <Text>{ad.price} ₽</Text>
+
+        {ad.needsRevision && (
+          <Badge variant="dot" color="orange" w="fit-content">
+            Требует доработок
+          </Badge>
+        )}
+      </Stack>
+    </Group>
+  </Card>
+));
+AdListCard.displayName = 'AdListCard';
+
 export default function () {
-  const { values: searchState, searchParams, setValues: setSearchState } = useUrlSearchState({
+  const { values: searchState, setValues: setSearchState } = useUrlSearchState({
     debounceMs: 500,
     fromSearchParams: (params) => ({
       q: params.get('q') || '',
@@ -119,19 +196,26 @@ export default function () {
     key: 'view-mode',
     defaultValue: 'grid',
   });
+  const [isUiTransitionPending, startUiTransition] = useTransition();
+
+  const deferredSearchState = useDeferredValue(searchState);
+  const sortValue = deferredSearchState.sort || 'createdAt:asc';
+  const [sortColumn = 'createdAt', sortDirection = 'asc'] = sortValue.split(':');
+  const page = Math.max(1, Number(deferredSearchState.page) || 1);
+  const categories = deferredSearchState.categories.join(',');
 
   const getAdsQuery = useQuery({
-    queryKey: ['ads', searchParams.toString()],
+    queryKey: ['ads', deferredSearchState],
     queryFn: ({ signal }) =>
       apiAds.get<ResponseAds>('/items', {
         params: {
-          q: searchParams.get('q'),
-          categories: searchParams.getAll('categories').join(','),
+          q: deferredSearchState.q,
+          categories,
           limit: LIMIT_ADS,
-          skip: (Math.max(1, Number(searchParams.get('page')) || 1) - 1) * LIMIT_ADS,
-          needsRevision: searchParams.get('needsRevision'),
-          sortColumn: searchParams.get('sort')?.split(':')[0],
-          sortDirection: searchParams.get('sort')?.split(':')[1],
+          skip: (page - 1) * LIMIT_ADS,
+          needsRevision: String(deferredSearchState.needsRevision),
+          sortColumn,
+          sortDirection,
         },
         signal,
       }),
@@ -141,12 +225,15 @@ export default function () {
   const form = useForm({
     initialValues: searchState,
     onValuesChange: (values) => {
-      setSearchState(values);
+      startUiTransition(() => {
+        setSearchState(values);
+      });
     },
   });
 
   const totalAds = getAdsQuery.data?.data.total ?? 0;
   const totalPagingPages = Math.ceil(totalAds / LIMIT_ADS);
+  const ads = useMemo(() => getAdsQuery.data?.data.items ?? [], [getAdsQuery.data?.data.items]);
 
   const isDataLoading =
     getAdsQuery.isPlaceholderData || (getAdsQuery.isLoading && !getAdsQuery.data);
@@ -169,7 +256,7 @@ export default function () {
             radius="md"
             placeholder="Найти объявление...."
             rightSection={
-              getAdsQuery.isLoading ? (
+              getAdsQuery.isLoading || isUiTransitionPending ? (
                 <Loader size={20} />
               ) : form.values.q ? (
                 <ActionIcon
@@ -190,7 +277,11 @@ export default function () {
           <ActionIcon.Group>
             <ActionIcon
               radius="md"
-              onClick={() => setViewMode('grid')}
+              onClick={() =>
+                startUiTransition(() => {
+                  setViewMode('grid');
+                })
+              }
               variant={viewMode === 'grid' ? 'outline' : 'default'}
               size="lg"
               aria-label="Gallery"
@@ -200,7 +291,11 @@ export default function () {
 
             <ActionIcon
               radius="md"
-              onClick={() => setViewMode('list')}
+              onClick={() =>
+                startUiTransition(() => {
+                  setViewMode('list');
+                })
+              }
               variant={viewMode === 'list' ? 'outline' : 'default'}
               size="lg"
               aria-label="Settings"
@@ -249,10 +344,12 @@ export default function () {
             <Button
               disabled={!isFullyForm}
               onClick={() =>
-                form.setValues({
-                  q: '',
-                  categories: [],
-                  needsRevision: false,
+                startUiTransition(() => {
+                  form.setValues({
+                    q: '',
+                    categories: [],
+                    needsRevision: false,
+                  });
                 })
               }
             >
@@ -266,44 +363,7 @@ export default function () {
             {getAdsQuery.isError && <Alert color="red" icon={<MdInfo />} title="Ошибка"></Alert>}
             {viewMode === 'grid' && (
               <SimpleGrid cols={5} h={650}>
-                {!isDataLoading &&
-                  !!getAdsQuery.data?.data.items.length &&
-                  getAdsQuery.data.data.items.map((ad) => (
-                    <Card
-                      key={ad.id}
-                      h={300}
-                      shadow="sm"
-                      padding="lg"
-                      radius="md"
-                      withBorder
-                      component={Link}
-                      to={`/ads/${ad.id}`}
-                    >
-                      <Card.Section>
-                        <Image
-                          src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQE7Ui111Q0ppxCJctMroRHTZyzWKB28EV8sg&s"
-                          height={150}
-                          alt={ad.title}
-                        />
-                      </Card.Section>
-
-                      <Badge radius="md" pos={'absolute'} top={'47%'}>
-                        {CATEGORIES_TRANSLATE[ad.category]}
-                      </Badge>
-                      <Stack gap="xs" mt="md">
-                        <Text fw={500} lineClamp={2} style={{ minHeight: '48px' }}>
-                          {ad.title}
-                        </Text>
-                        <Text>{ad.price} ₽</Text>
-
-                        {ad.needsRevision && (
-                          <Badge variant="dot" color="orange" w="fit-content">
-                            Требует доработок
-                          </Badge>
-                        )}
-                      </Stack>
-                    </Card>
-                  ))}
+                {!isDataLoading && !!ads.length && ads.map((ad) => <AdGridCard key={ad.id} ad={ad} />)}
                 {isDataLoading &&
                   [...new Array(LIMIT_ADS)].map((_, id) => (
                     <Card key={id} h={320} shadow="sm" padding="lg" radius="md" withBorder>
@@ -320,40 +380,7 @@ export default function () {
             {viewMode === 'list' && (
               <ScrollArea h={650}>
                 <Stack>
-                  {!isDataLoading &&
-                    !!getAdsQuery.data?.data.items.length &&
-                    getAdsQuery.data.data.items.map((ad) => (
-                      <Card
-                        key={ad.id}
-                        h={140}
-                        shadow="sm"
-                        radius="md"
-                        p={0}
-                        withBorder
-                        component={Link}
-                        to={`/ads/${ad.id}`}
-                      >
-                        <Group align="flex-start">
-                          <img
-                            src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQE7Ui111Q0ppxCJctMroRHTZyzWKB28EV8sg&s"
-                            height={140}
-                            alt={ad.title}
-                          />
-
-                          <Stack m={0} gap={8} pt={5}>
-                            <Text>{CATEGORIES_TRANSLATE[ad.category]}</Text>
-                            <Text>{ad.title}</Text>
-                            <Text>{ad.price} ₽</Text>
-
-                            {ad.needsRevision && (
-                              <Badge variant="dot" color="orange" w="fit-content">
-                                Требует доработок
-                              </Badge>
-                            )}
-                          </Stack>
-                        </Group>
-                      </Card>
-                    ))}
+                  {!isDataLoading && !!ads.length && ads.map((ad) => <AdListCard key={ad.id} ad={ad} />)}
                   {isDataLoading &&
                     [...new Array(LIMIT_ADS)].map((_, id) => (
                       <Card key={id} h={140} shadow="sm" radius="md" p={0} withBorder>
