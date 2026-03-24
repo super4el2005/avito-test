@@ -30,7 +30,14 @@ import { MdFormatListBulleted, MdGridView, MdInfo, MdOutlineClear, MdSearch } fr
 
 import { Link } from 'react-router';
 
-import { type Item, ITEM_CATEGORIES, type ItemSortColumn, type SortDirection } from '@ads/shared';
+import {
+  AdsListSearchStateSchema,
+  type Item,
+  ITEM_CATEGORIES,
+  ItemsGetInQuerySchema,
+  type ItemSortColumn,
+  type SortDirection,
+} from '@ads/shared';
 
 import { apiAds } from '~/api';
 import { ImagePlaceholder } from '~/components/image-placeholder';
@@ -67,11 +74,11 @@ const SORT_FORM: {
   label: string;
 }[] = [
   {
-    value: 'createdAt:asc',
+    value: 'createdAt:desc',
     label: 'По новизне (сначала новые)',
   },
   {
-    value: 'createdAt:desc',
+    value: 'createdAt:asc',
     label: 'По новизне (сначала старые)',
   },
   {
@@ -164,11 +171,13 @@ export default function () {
   const searchStateUrl = useUrlSearchState({
     debounceMs: 500,
     fromSearchParams: (params) => ({
-      q: params.get('q') || '',
-      categories: params.getAll('categories') || [],
-      page: Number(params.get('page')) || 1,
-      sort: params.get('sort') || 'createdAt:asc',
-      needsRevision: params.get('needsRevision') === 'true',
+      q: AdsListSearchStateSchema.shape.q.parse(params.get('q') ?? ''),
+      categories: AdsListSearchStateSchema.shape.categories.parse(params.getAll('categories') ?? []),
+      page: AdsListSearchStateSchema.shape.page.catch(1).parse(Number(params.get('page') ?? 1)),
+      sort:
+        params.get('sort') ??
+        `${AdsListSearchStateSchema.shape.sortColumn.parse('createdAt')}:${AdsListSearchStateSchema.shape.sortDirection.parse('desc')}`,
+      needsRevision: AdsListSearchStateSchema.shape.needsRevision.parse(params.get('needsRevision') === 'true'),
     }),
     toSearchParams: (values) => ({
       ...values,
@@ -184,26 +193,37 @@ export default function () {
   const [isUiTransitionPending, startUiTransition] = useTransition();
 
   const deferredSearchState = useDeferredValue(searchStateUrl.values);
-  const sortValue = deferredSearchState.sort || 'createdAt:asc';
+  const sortValue = deferredSearchState.sort || 'createdAt:desc';
   const [sortColumn = 'createdAt', sortDirection = 'asc'] = sortValue.split(':');
   const page = Math.max(1, Number(deferredSearchState.page) || 1);
   const categories = deferredSearchState.categories.join(',');
 
   const getAdsQuery = useQuery({
     queryKey: ['ads', deferredSearchState],
-    queryFn: ({ signal }) =>
-      apiAds.get<ResponseAds>('/items', {
+    queryFn: ({ signal }) => {
+      const parsedQuery = ItemsGetInQuerySchema.parse({
+        q: deferredSearchState.q,
+        categories,
+        limit: String(LIMIT_ADS),
+        skip: String((page - 1) * LIMIT_ADS),
+        needsRevision: String(deferredSearchState.needsRevision),
+        sortColumn,
+        sortDirection,
+      });
+
+      return apiAds.get<ResponseAds>('/items', {
         params: {
-          q: deferredSearchState.q,
-          categories,
-          limit: LIMIT_ADS,
-          skip: (page - 1) * LIMIT_ADS,
-          needsRevision: String(deferredSearchState.needsRevision),
-          sortColumn,
-          sortDirection,
+          q: parsedQuery.q,
+          categories: parsedQuery.categories?.join(','),
+          limit: parsedQuery.limit,
+          skip: parsedQuery.skip,
+          needsRevision: parsedQuery.needsRevision,
+          sortColumn: parsedQuery.sortColumn,
+          sortDirection: parsedQuery.sortDirection,
         },
         signal,
-      }),
+      });
+    },
     placeholderData: (previousData) => previousData,
   });
 

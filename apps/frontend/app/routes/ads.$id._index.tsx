@@ -108,12 +108,14 @@ function translateParamValue(key: string, value: unknown, category?: Item['categ
 
 export default function () {
   const params = useParams();
+  const id = params.id ?? '';
   const getAdQuery = useQuery({
-    queryKey: ['ad', params.id],
+    queryKey: ['ad', id],
     queryFn: ({ signal }) =>
-      apiAds.get<ItemDetailsResponse>(`/items/${params.id}`, {
+      apiAds.get<ItemDetailsResponse>(`/items/${id}`, {
         signal,
       }),
+    enabled: Boolean(id),
   });
   if (getAdQuery.isError) {
     const errorMessage = extractErrorMessage(getAdQuery.error, 'Не удалось загрузить объявление');
@@ -178,7 +180,7 @@ export default function () {
           <Button leftSection={<MdArrowBack size={20} />} variant="light" component={Link} to="/ads">
             Назад
           </Button>
-          <Button component={Link} to={`/ads/${params.id}/edit`} rightSection={<MdEdit />}>
+          <Button component={Link} to={`/ads/${id}/edit`} rightSection={<MdEdit />}>
             Редактировать
           </Button>
         </Group>

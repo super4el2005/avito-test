@@ -31,11 +31,11 @@ import { MdChatBubbleOutline, MdInfo, MdLightbulbOutline, MdOutlineClear } from 
 
 import { Link, useNavigate, useParams } from 'react-router';
 
-import { ITEM_CATEGORIES } from '@ads/shared';
+import { ITEM_CATEGORIES,ItemUpdateInSchema } from '@ads/shared';
 import type { Item } from '@ads/shared';
 
 import { aiChatAboutItem, type AiChatMessage, aiSuggestDescription, aiSuggestPrice, apiAds } from '~/api';
-import { extractErrorMessage, parseSuggestedNumber,useAsyncPopoverRequest } from '~/lib';
+import { extractErrorMessage, parseSuggestedNumber, useAsyncPopoverRequest } from '~/lib';
 import { queryClient } from '~/root';
 
 type Category = (typeof ITEM_CATEGORIES)[keyof typeof ITEM_CATEGORIES];
@@ -141,6 +141,8 @@ type WarningInputStyles = {
 };
 
 const AutoParamsFields = memo(function AutoParamsFields({ params, setParams, maybeWarnIfEmpty }: CategoryParamsProps) {
+  const autoParams = params as Partial<ParamsAuto>;
+
   return (
     <Stack gap="sm">
       <Select
@@ -148,35 +150,35 @@ const AutoParamsFields = memo(function AutoParamsFields({ params, setParams, may
         placeholder="Выберите"
         clearable
         data={AUTO_TRANSMISSION_OPTIONS}
-        value={(params as any).transmission ?? null}
+        value={autoParams.transmission ?? null}
         onChange={(value) =>
           setParams({
-            ...params,
-            transmission: (value ?? undefined) as any,
+            ...autoParams,
+            transmission: (value ?? undefined) as ParamsAuto['transmission'] | undefined,
           })
         }
-        styles={maybeWarnIfEmpty(false, (params as any).transmission)}
+        styles={maybeWarnIfEmpty(false, autoParams.transmission)}
       />
 
       <TextInput
         label="Марка"
         placeholder="Марка"
-        value={(params as any).brand ?? ''}
+        value={autoParams.brand ?? ''}
         onChange={(e) =>
           setParams({
-            ...params,
+            ...autoParams,
             brand: e.currentTarget.value || undefined,
           })
         }
         rightSection={
-          (params as any).brand ? (
+          autoParams.brand ? (
             <ActionIcon
               variant="subtle"
               color="gray"
               aria-label="Очистить"
               onClick={() =>
                 setParams({
-                  ...params,
+                  ...autoParams,
                   brand: undefined,
                 })
               }
@@ -185,28 +187,28 @@ const AutoParamsFields = memo(function AutoParamsFields({ params, setParams, may
             </ActionIcon>
           ) : null
         }
-        styles={maybeWarnIfEmpty(false, (params as any).brand)}
+        styles={maybeWarnIfEmpty(false, autoParams.brand)}
       />
 
       <TextInput
         label="Модель"
         placeholder="Модель"
-        value={(params as any).model ?? ''}
+        value={autoParams.model ?? ''}
         onChange={(e) =>
           setParams({
-            ...params,
+            ...autoParams,
             model: e.currentTarget.value || undefined,
           })
         }
         rightSection={
-          (params as any).model ? (
+          autoParams.model ? (
             <ActionIcon
               variant="subtle"
               color="gray"
               aria-label="Очистить"
               onClick={() =>
                 setParams({
-                  ...params,
+                  ...autoParams,
                   model: undefined,
                 })
               }
@@ -215,7 +217,7 @@ const AutoParamsFields = memo(function AutoParamsFields({ params, setParams, may
             </ActionIcon>
           ) : null
         }
-        styles={maybeWarnIfEmpty(false, (params as any).model)}
+        styles={maybeWarnIfEmpty(false, autoParams.model)}
       />
 
       <NumberInput
@@ -223,14 +225,14 @@ const AutoParamsFields = memo(function AutoParamsFields({ params, setParams, may
         placeholder="Год"
         hideControls
         min={1900}
-        value={(params as any).yearOfManufacture ?? undefined}
+        value={autoParams.yearOfManufacture ?? undefined}
         onChange={(value) =>
           setParams({
-            ...params,
+            ...autoParams,
             yearOfManufacture: typeof value === 'number' ? value : undefined,
           })
         }
-        styles={maybeWarnIfEmpty(false, (params as any).yearOfManufacture)}
+        styles={maybeWarnIfEmpty(false, autoParams.yearOfManufacture)}
       />
 
       <NumberInput
@@ -238,14 +240,14 @@ const AutoParamsFields = memo(function AutoParamsFields({ params, setParams, may
         placeholder="Пробег"
         hideControls
         min={0}
-        value={(params as any).mileage ?? undefined}
+        value={autoParams.mileage ?? undefined}
         onChange={(value) =>
           setParams({
-            ...params,
+            ...autoParams,
             mileage: typeof value === 'number' ? value : undefined,
           })
         }
-        styles={maybeWarnIfEmpty(false, (params as any).mileage)}
+        styles={maybeWarnIfEmpty(false, autoParams.mileage)}
       />
 
       <NumberInput
@@ -253,20 +255,22 @@ const AutoParamsFields = memo(function AutoParamsFields({ params, setParams, may
         placeholder="Мощность"
         hideControls
         min={0}
-        value={(params as any).enginePower ?? undefined}
+        value={autoParams.enginePower ?? undefined}
         onChange={(value) =>
           setParams({
-            ...params,
+            ...autoParams,
             enginePower: typeof value === 'number' ? value : undefined,
           })
         }
-        styles={maybeWarnIfEmpty(false, (params as any).enginePower)}
+        styles={maybeWarnIfEmpty(false, autoParams.enginePower)}
       />
     </Stack>
   );
 });
 
 const RealEstateParamsFields = memo(function RealEstateParamsFields({ params, setParams, maybeWarnIfEmpty }: CategoryParamsProps) {
+  const realEstateParams = params as Partial<ParamsRealEstate>;
+
   return (
     <Stack gap="sm">
       <Select
@@ -274,35 +278,35 @@ const RealEstateParamsFields = memo(function RealEstateParamsFields({ params, se
         placeholder="Выберите"
         clearable
         data={REAL_ESTATE_TYPE_OPTIONS}
-        value={(params as any).type ?? null}
+        value={realEstateParams.type ?? null}
         onChange={(value) =>
           setParams({
-            ...params,
-            type: (value ?? undefined) as any,
+            ...realEstateParams,
+            type: (value ?? undefined) as ParamsRealEstate['type'] | undefined,
           })
         }
-        styles={maybeWarnIfEmpty(false, (params as any).type)}
+        styles={maybeWarnIfEmpty(false, realEstateParams.type)}
       />
 
       <TextInput
         label="Адрес"
         placeholder="Адрес"
-        value={(params as any).address ?? ''}
+        value={realEstateParams.address ?? ''}
         onChange={(e) =>
           setParams({
-            ...params,
+            ...realEstateParams,
             address: e.currentTarget.value || undefined,
           })
         }
         rightSection={
-          (params as any).address ? (
+          realEstateParams.address ? (
             <ActionIcon
               variant="subtle"
               color="gray"
               aria-label="Очистить"
               onClick={() =>
                 setParams({
-                  ...params,
+                  ...realEstateParams,
                   address: undefined,
                 })
               }
@@ -311,7 +315,7 @@ const RealEstateParamsFields = memo(function RealEstateParamsFields({ params, se
             </ActionIcon>
           ) : null
         }
-        styles={maybeWarnIfEmpty(false, (params as any).address)}
+        styles={maybeWarnIfEmpty(false, realEstateParams.address)}
       />
 
       <NumberInput
@@ -319,14 +323,14 @@ const RealEstateParamsFields = memo(function RealEstateParamsFields({ params, se
         placeholder="Площадь"
         hideControls
         min={0}
-        value={(params as any).area ?? undefined}
+        value={realEstateParams.area ?? undefined}
         onChange={(value) =>
           setParams({
-            ...params,
+            ...realEstateParams,
             area: typeof value === 'number' ? value : undefined,
           })
         }
-        styles={maybeWarnIfEmpty(false, (params as any).area)}
+        styles={maybeWarnIfEmpty(false, realEstateParams.area)}
       />
 
       <NumberInput
@@ -334,20 +338,22 @@ const RealEstateParamsFields = memo(function RealEstateParamsFields({ params, se
         placeholder="Этаж"
         hideControls
         min={0}
-        value={(params as any).floor ?? undefined}
+        value={realEstateParams.floor ?? undefined}
         onChange={(value) =>
           setParams({
-            ...params,
+            ...realEstateParams,
             floor: typeof value === 'number' ? value : undefined,
           })
         }
-        styles={maybeWarnIfEmpty(false, (params as any).floor)}
+        styles={maybeWarnIfEmpty(false, realEstateParams.floor)}
       />
     </Stack>
   );
 });
 
 const ElectronicsParamsFields = memo(function ElectronicsParamsFields({ params, setParams, maybeWarnIfEmpty }: CategoryParamsProps) {
+  const electronicsParams = params as Partial<ParamsElectronics>;
+
   return (
     <Stack gap="sm">
       <Select
@@ -355,35 +361,35 @@ const ElectronicsParamsFields = memo(function ElectronicsParamsFields({ params, 
         placeholder="Выберите"
         clearable
         data={ELECTRONICS_TYPE_OPTIONS}
-        value={(params as any).type ?? null}
+        value={electronicsParams.type ?? null}
         onChange={(value) =>
           setParams({
-            ...params,
-            type: (value ?? undefined) as any,
+            ...electronicsParams,
+            type: (value ?? undefined) as ParamsElectronics['type'] | undefined,
           })
         }
-        styles={maybeWarnIfEmpty(false, (params as any).type)}
+        styles={maybeWarnIfEmpty(false, electronicsParams.type)}
       />
 
       <TextInput
         label="Бренд"
         placeholder="Бренд"
-        value={(params as any).brand ?? ''}
+        value={electronicsParams.brand ?? ''}
         onChange={(e) =>
           setParams({
-            ...params,
+            ...electronicsParams,
             brand: e.currentTarget.value || undefined,
           })
         }
         rightSection={
-          (params as any).brand ? (
+          electronicsParams.brand ? (
             <ActionIcon
               variant="subtle"
               color="gray"
               aria-label="Очистить"
               onClick={() =>
                 setParams({
-                  ...params,
+                  ...electronicsParams,
                   brand: undefined,
                 })
               }
@@ -392,28 +398,28 @@ const ElectronicsParamsFields = memo(function ElectronicsParamsFields({ params, 
             </ActionIcon>
           ) : null
         }
-        styles={maybeWarnIfEmpty(false, (params as any).brand)}
+        styles={maybeWarnIfEmpty(false, electronicsParams.brand)}
       />
 
       <TextInput
         label="Модель"
         placeholder="Модель"
-        value={(params as any).model ?? ''}
+        value={electronicsParams.model ?? ''}
         onChange={(e) =>
           setParams({
-            ...params,
+            ...electronicsParams,
             model: e.currentTarget.value || undefined,
           })
         }
         rightSection={
-          (params as any).model ? (
+          electronicsParams.model ? (
             <ActionIcon
               variant="subtle"
               color="gray"
               aria-label="Очистить"
               onClick={() =>
                 setParams({
-                  ...params,
+                  ...electronicsParams,
                   model: undefined,
                 })
               }
@@ -422,7 +428,7 @@ const ElectronicsParamsFields = memo(function ElectronicsParamsFields({ params, 
             </ActionIcon>
           ) : null
         }
-        styles={maybeWarnIfEmpty(false, (params as any).model)}
+        styles={maybeWarnIfEmpty(false, electronicsParams.model)}
       />
 
       <Select
@@ -430,35 +436,35 @@ const ElectronicsParamsFields = memo(function ElectronicsParamsFields({ params, 
         placeholder="Выберите"
         clearable
         data={ELECTRONICS_CONDITION_OPTIONS}
-        value={(params as any).condition ?? null}
+        value={electronicsParams.condition ?? null}
         onChange={(value) =>
           setParams({
-            ...params,
-            condition: (value ?? undefined) as any,
+            ...electronicsParams,
+            condition: (value ?? undefined) as ParamsElectronics['condition'] | undefined,
           })
         }
-        styles={maybeWarnIfEmpty(false, (params as any).condition)}
+        styles={maybeWarnIfEmpty(false, electronicsParams.condition)}
       />
 
       <TextInput
         label="Цвет"
         placeholder="Цвет"
-        value={(params as any).color ?? ''}
+        value={electronicsParams.color ?? ''}
         onChange={(e) =>
           setParams({
-            ...params,
+            ...electronicsParams,
             color: e.currentTarget.value || undefined,
           })
         }
         rightSection={
-          (params as any).color ? (
+          electronicsParams.color ? (
             <ActionIcon
               variant="subtle"
               color="gray"
               aria-label="Очистить"
               onClick={() =>
                 setParams({
-                  ...params,
+                  ...electronicsParams,
                   color: undefined,
                 })
               }
@@ -467,7 +473,7 @@ const ElectronicsParamsFields = memo(function ElectronicsParamsFields({ params, 
             </ActionIcon>
           ) : null
         }
-        styles={maybeWarnIfEmpty(false, (params as any).color)}
+        styles={maybeWarnIfEmpty(false, electronicsParams.color)}
       />
     </Stack>
   );
@@ -510,7 +516,7 @@ const AiChatWidget = memo(function AiChatWidget({ itemContext }: { itemContext: 
             id: itemContext.id,
             title: itemContext.title,
             category: itemContext.category,
-            params: itemContext.params as any,
+            params: itemContext.params as Record<string, unknown>,
             price: itemContext.price,
             description: itemContext.description,
           },
@@ -540,7 +546,13 @@ const AiChatWidget = memo(function AiChatWidget({ itemContext }: { itemContext: 
       withArrow
       shadow="md"
       opened={isChatWidgetOpen}
-      onChange={setIsChatWidgetOpen.toggle}
+      onChange={(opened) => {
+        if (opened) {
+          setIsChatWidgetOpen.open();
+          return;
+        }
+        setIsChatWidgetOpen.close();
+      }}
       closeOnClickOutside
       closeOnEscape
     >
@@ -630,13 +642,31 @@ const AiChatWidget = memo(function AiChatWidget({ itemContext }: { itemContext: 
 });
 
 function mapItemToEditValues(item: ItemDetailsResponse): EditFormValues {
+  if (item.category === ITEM_CATEGORIES.AUTO) {
+    return {
+      category: ITEM_CATEGORIES.AUTO,
+      title: item.title ?? '',
+      price: item.price ?? null,
+      description: item.description ?? '',
+      params: item.params ?? {},
+    };
+  }
+  if (item.category === ITEM_CATEGORIES.REAL_ESTATE) {
+    return {
+      category: ITEM_CATEGORIES.REAL_ESTATE,
+      title: item.title ?? '',
+      price: item.price ?? null,
+      description: item.description ?? '',
+      params: item.params ?? {},
+    };
+  }
   return {
-    category: item.category,
+    category: ITEM_CATEGORIES.ELECTRONICS,
     title: item.title ?? '',
     price: item.price ?? null,
     description: item.description ?? '',
-    params: (item.params ?? {}) as any,
-  } as EditFormValues;
+    params: item.params ?? {},
+  };
 }
 
 function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
@@ -657,7 +687,7 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
     [ITEM_CATEGORIES.AUTO]: {},
     [ITEM_CATEGORIES.REAL_ESTATE]: {},
     [ITEM_CATEGORIES.ELECTRONICS]: {},
-    [item.category]: (item.params ?? {}) as any,
+    [item.category]: item.params ?? {},
   });
 
   const warningStyles = useMemo(
@@ -680,7 +710,7 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
 
   const setCategoryParams = useCallback(
     (next: Record<string, unknown>) => {
-      form.setFieldValue('params', next as any);
+      form.setFieldValue('params', next as EditFormValues['params']);
     },
     [form],
   );
@@ -696,6 +726,9 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
 
   const updateAdMutation = useMutation({
     mutationFn: async (values: EditFormValues) => {
+      if (values.price === null) {
+        throw new Error('Цена должна быть заполнена');
+      }
       const payload = {
         category: values.category,
         title: values.title.trim(),
@@ -703,7 +736,13 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
         description: values.description?.trim() ? values.description.trim() : undefined,
         params: values.params ?? {},
       };
-      return apiAds.put(`/items/${id}`, payload);
+      const parsedPayload = ItemUpdateInSchema.safeParse(payload);
+
+      if (!parsedPayload.success) {
+        throw new Error('Данные формы не прошли валидацию перед сохранением');
+      }
+
+      return apiAds.put(`/items/${id}`, parsedPayload.data);
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['ads'] });
@@ -735,7 +774,7 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
       const res = await aiSuggestPrice({
         title: form.values.title,
         category: form.values.category,
-        params: (form.values.params ?? {}) as any,
+        params: (form.values.params ?? {}) as Record<string, unknown>,
         description: form.values.description || undefined,
       });
       return res.text;
@@ -751,7 +790,7 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
       const res = await aiSuggestDescription({
         title: form.values.title,
         category: form.values.category,
-        params: (form.values.params ?? {}) as any,
+        params: (form.values.params ?? {}) as Record<string, unknown>,
         description: form.values.description || undefined,
       });
       return res.text;
@@ -799,7 +838,7 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
                 form.setValues({
                   ...form.values,
                   category: nextCategory,
-                  params: nextParams as any,
+                  params: nextParams as EditFormValues['params'],
                 } as EditFormValues);
 
                 form.setDirty({

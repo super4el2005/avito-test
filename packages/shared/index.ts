@@ -118,6 +118,17 @@ export const ItemsGetInQuerySchema = z.object({
   sortColumn: z.enum<ItemSortColumn[]>(['title', 'createdAt', "price"]).optional(),
   sortDirection: z.enum<SortDirection[]>(['asc', 'desc']).optional(),
 });
+export type ItemsGetInQuery = z.infer<typeof ItemsGetInQuerySchema>;
+
+export const AdsListSearchStateSchema = z.object({
+  q: z.string().default(''),
+  categories: z.array(CategorySchema).default([]),
+  page: z.number().int().positive().default(1),
+  needsRevision: z.boolean().default(false),
+  sortColumn: z.enum<ItemSortColumn[]>(['title', 'createdAt', 'price']).default('createdAt'),
+  sortDirection: z.enum<SortDirection[]>(['asc', 'desc']).default('desc'),
+});
+export type AdsListSearchState = z.infer<typeof AdsListSearchStateSchema>;
 
 export const ItemUpdateInSchema = z
   .object({
@@ -142,3 +153,4 @@ export const ItemUpdateInSchema = z
       }),
     ]),
   );
+export type ItemUpdateInput = z.infer<typeof ItemUpdateInSchema>;

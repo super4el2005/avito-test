@@ -20,7 +20,7 @@ const toPascalCase = (fileBaseName: string) =>
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join('');
 
-const componentNamingPlugin: any = {
+const componentNamingPlugin = {
   rules: {
     'component-file-and-name': {
       meta: {
@@ -28,8 +28,17 @@ const componentNamingPlugin: any = {
         fixable: 'code' as const,
         schema: [],
       },
-      create(context: any) {
-        const filename = context.filename ?? context.getFilename();
+      create(context: unknown) {
+        const ruleContext = context as {
+          filename?: string;
+          getFilename: () => string;
+          report: (descriptor: {
+            node: unknown;
+            message: string;
+            fix?: (fixer: unknown) => unknown;
+          }) => void;
+        };
+        const filename = ruleContext.filename ?? ruleContext.getFilename();
 
         if (!filename || filename === '<input>' || !isComponentFile(filename)) {
           return {};
@@ -41,8 +50,8 @@ const componentNamingPlugin: any = {
 
         if (!isKebabCase) {
           return {
-            Program(node: any) {
-              context.report({
+            Program(node: unknown) {
+              ruleContext.report({
                 node,
                 message:
                   'Файлы компонентов в app/components должны быть в kebab-case и в нижнем регистре (пример: image-placeholder.tsx).',
@@ -53,39 +62,47 @@ const componentNamingPlugin: any = {
 
         const expectedComponentName = toPascalCase(fileBaseName);
 
-        const reportInvalidName = (node: any, currentName: string, idNode: any) => {
-          context.report({
+        const reportInvalidName = (node: unknown, currentName: string, idNode: unknown) => {
+          ruleContext.report({
             node,
             message: `Имя компонента должно совпадать с именем файла: "${expectedComponentName}" (сейчас: "${currentName}").`,
-            fix: (fixer: any) => fixer.replaceText(idNode, expectedComponentName),
+            fix: (fixer) => (fixer as { replaceText: (node: unknown, text: string) => unknown }).replaceText(idNode, expectedComponentName),
           });
         };
 
         return {
-          ExportNamedDeclaration(node: any) {
-            if (!node.declaration) return;
+          ExportNamedDeclaration(node: unknown) {
+            const declarationNode = (node as { declaration?: unknown }).declaration;
+            if (!declarationNode) return;
 
-            if (node.declaration.type === 'FunctionDeclaration' && node.declaration.id?.name) {
-              const currentName = node.declaration.id.name;
+            const declaration = declarationNode as {
+              type?: string;
+              id?: { name?: string };
+              declarations?: Array<{ id?: { type?: string; name?: string }; init?: { type?: string } }>;
+            };
+
+            if (declaration.type === 'FunctionDeclaration' && declaration.id?.name) {
+              const currentName = declaration.id.name;
               if (currentName !== expectedComponentName) {
-                reportInvalidName(node, currentName, node.declaration.id);
+                reportInvalidName(node, currentName, declaration.id);
               }
             }
 
-            if (node.declaration.type === 'VariableDeclaration') {
-              for (const declaration of node.declaration.declarations) {
-                if (declaration.id?.type !== 'Identifier') continue;
+            if (declaration.type === 'VariableDeclaration') {
+              for (const variableDeclaration of declaration.declarations ?? []) {
+                if (variableDeclaration.id?.type !== 'Identifier') continue;
 
                 const isComponentLikeValue =
-                  declaration.init?.type === 'ArrowFunctionExpression' ||
-                  declaration.init?.type === 'FunctionExpression' ||
-                  declaration.init?.type === 'CallExpression';
+                  variableDeclaration.init?.type === 'ArrowFunctionExpression' ||
+                  variableDeclaration.init?.type === 'FunctionExpression' ||
+                  variableDeclaration.init?.type === 'CallExpression';
 
                 if (!isComponentLikeValue) continue;
 
-                const currentName = declaration.id.name;
+                const currentName = variableDeclaration.id.name;
+                if (!currentName) continue;
                 if (currentName !== expectedComponentName) {
-                  reportInvalidName(node, currentName, declaration.id);
+                  reportInvalidName(node, currentName, variableDeclaration.id);
                 }
               }
             }
@@ -132,6 +149,7 @@ export default defineConfig([
       ],
       'simple-import-sort/exports': 'error',
       'naming/component-file-and-name': 'error',
+      '@typescript-eslint/no-explicit-any': 'error',
     },
   },
   tseslint.configs.recommended,
@@ -141,7 +159,6 @@ export default defineConfig([
   {
     files: ['app/routes/ads.$id.edit.tsx'],
     rules: {
-      '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
     },
   },
