@@ -39,13 +39,11 @@ pnpm run dev:ollama
 ```bash
 pnpm run prod
 ```
-
-Эквивалентно:
-
+или
 ```bash
 pnpm run prod:gigachat
 ```
-### Dev (Ollama)
+### Prod (Ollama)
 ```bash
 pnpm run prod:ollama
 ```
