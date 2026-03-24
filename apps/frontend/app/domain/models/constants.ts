@@ -4,6 +4,9 @@ import type { Category, SortFormValue } from './types';
 
 export const LIMIT_ADS = 10;
 
+export const AI_REQUEST_ERROR_MESSAGE =
+  'Произошла ошибка при запросе к AI\nПопробуйте повторить запрос или закройте уведомление';
+
 export const CATEGORIES_TRANSLATE: Record<Category, string> = {
   [ITEM_CATEGORIES.AUTO]: 'Автомобили',
   [ITEM_CATEGORIES.REAL_ESTATE]: 'Недвижимость',

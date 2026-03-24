@@ -2,12 +2,12 @@ import { useMutation } from '@tanstack/react-query';
 
 import { useState } from 'react';
 
-type UseAsyncPopoverRequestConfig<TData> = {
+export type AsyncPopoverRequestConfig<TData> = {
   mutationFn: () => Promise<TData>;
   mapErrorToMessage: (error: unknown) => string;
 };
 
-type UseAsyncPopoverRequestResult<TData> = {
+export type AsyncPopoverRequestState<TData> = {
   isOpen: boolean;
   setIsOpen: (value: boolean) => void;
   data: TData | null;
@@ -20,7 +20,7 @@ type UseAsyncPopoverRequestResult<TData> = {
 export function useAsyncPopoverRequest<TData>({
   mutationFn,
   mapErrorToMessage,
-}: UseAsyncPopoverRequestConfig<TData>): UseAsyncPopoverRequestResult<TData> {
+}: AsyncPopoverRequestConfig<TData>): AsyncPopoverRequestState<TData> {
   const [isOpen, setIsOpen] = useState(false);
   const [data, setData] = useState<TData | null>(null);
   const [error, setError] = useState<string | null>(null);

@@ -1,13 +1,15 @@
-import { Alert, Box, Button, Container, Divider, Group, List, ScrollArea, Skeleton, Stack, Text, Title } from '@mantine/core';
+import { Alert, Button, Container, Divider, Group, List, ScrollArea, Skeleton, Stack, Text, Title } from '@mantine/core';
 
 import { useQuery } from '@tanstack/react-query';
+
+import { useMemo } from 'react';
 
 import { MdArrowBack, MdEdit, MdInfo } from 'react-icons/md';
 
 import { Link, useParams } from 'react-router';
 
 import { apiAds } from '~/api';
-import { formatDateTimeRu, isKnownParamLabel, type ItemDetailsResponse, translateParamLabel, translateParamValue } from '~/domain';
+import { buildAdDetailsParamsViewModel, formatDateTimeRu, type ItemDetailsResponse, translateParamLabel, translateParamValue } from '~/domain';
 import { extractErrorMessage } from '~/shared';
 import { ImagePlaceholder } from '~/shared/components/image-placeholder';
 
@@ -22,6 +24,10 @@ export default function () {
       }),
     enabled: Boolean(id),
   });
+
+  const ad = getAdQuery.data?.data;
+  const adDetailsView = useMemo(() => buildAdDetailsParamsViewModel(ad), [ad]);
+
   if (getAdQuery.isError) {
     const errorMessage = extractErrorMessage(getAdQuery.error, 'Не удалось загрузить объявление');
 
@@ -73,19 +79,6 @@ export default function () {
       </Container>
     );
   }
-  const ad = getAdQuery.data?.data;
-  const adParams = ad?.params ?? {};
-  const adCategory = ad?.category;
-  const hasParams = Object.keys(adParams).length > 0;
-
-  const translatedParams = Object.entries(adParams).filter(([key]) => {
-    if (key === 'type') return true;
-    return isKnownParamLabel(key);
-  });
-
-  const missingParamLabels = ad?.missingParams.length
-    ? ad.missingParams.map((param) => translateParamLabel(param, adCategory))
-    : ['Не заполнено описание'];
 
   return (
     <Container size={'xl'} pt={30}>
@@ -121,14 +114,14 @@ export default function () {
             </Group>
           </ScrollArea>
         </Stack>
-        <Stack w={500}>
+        <Stack w={"max-content"} align="flex-start">
           {ad?.needsRevision && (
             <Alert radius={'md'} color="yellow" icon={<MdInfo />} title={'Требуются доработки'}>
               <List listStyleType="none">
                 <List.Item>
                   У объявления не заполнены поля:
                   <List withPadding listStyleType="disc">
-                    {missingParamLabels.map((label) => (
+                    {adDetailsView.missingParamLabels.map((label) => (
                       <List.Item key={label}>{label}</List.Item>
                     ))}
                   </List>
@@ -138,14 +131,19 @@ export default function () {
           )}
 
           <Title order={4}>Характеристики</Title>
-          {hasParams ? (
+          {adDetailsView.hasParams ? (
             <Stack gap={1}>
-              {translatedParams.map(([key, value]) => (
-                <Group key={key}>
-                  <Text fw={500} w={200}>
-                    {translateParamLabel(key, adCategory)}
+              {adDetailsView.translatedParams.map(({ key, value }) => (
+                <Group key={key} wrap="nowrap" gap="xs">
+                  <Text fw={500} w={200} flex="0 0 auto">
+                    {translateParamLabel(key, ad?.category)}
                   </Text>
-                  <Text>{translateParamValue(key, value, adCategory)}</Text>
+                  <Text
+                    flex={1}
+                    style={{ textAlign: 'right' }}
+                  >
+                    {translateParamValue(key, value, ad?.category)}
+                  </Text>
                 </Group>
               ))}
             </Stack>

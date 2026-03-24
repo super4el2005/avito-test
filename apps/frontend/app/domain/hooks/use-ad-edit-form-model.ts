@@ -9,10 +9,10 @@ import { useNavigate } from 'react-router';
 
 import { ITEM_CATEGORIES, ItemUpdateInSchema } from '@ads/shared';
 
-import type { WarningInputStyles } from '../components/category-params-fields';
+import type { MaybeWarnIfEmpty, WarningInputStyles } from '../components/category-params-fields';
 import { CATEGORIES_TRANSLATE } from '../models/constants';
 import { mapItemDetailsToEditFormValues } from '../models/mappers';
-import type { Category, ItemDetailsResponse, ItemEditFormValues } from '../models/types';
+import type { Category, ItemDetailsResponse, ItemEditFormValues, ParamsAuto, ParamsElectronics, ParamsRealEstate } from '../models/types';
 
 import { apiAds } from '~/api';
 import { queryClient } from '~/root';
@@ -26,13 +26,51 @@ type UseAdEditFormModelParams = {
 
 type UseAdEditFormModelResult = Readonly<{
   form: ReturnType<typeof useForm<ItemEditFormValues>>;
-  maybeWarnIfEmpty: (isRequired: boolean, value: unknown) => WarningInputStyles | undefined;
+  maybeWarnIfEmpty: MaybeWarnIfEmpty;
   setCategoryParams: (next: ItemEditFormValues['params']) => void;
   categoryOptions: ReadonlyArray<{ value: Category; label: string }>;
-  updateAdMutation: UseMutationResult<unknown, Error, ItemEditFormValues, unknown>;
+  updateAdMutation: UseMutationResult<{ data: unknown }, Error, ItemEditFormValues, unknown>;
   requiredOk: boolean;
   onCategoryChange: (value: string | null) => void;
 }>;
+
+type ParamsByCategory = {
+  [ITEM_CATEGORIES.AUTO]: ParamsAuto;
+  [ITEM_CATEGORIES.REAL_ESTATE]: ParamsRealEstate;
+  [ITEM_CATEGORIES.ELECTRONICS]: ParamsElectronics;
+};
+
+function getEmptyParamsByCategory(): ParamsByCategory {
+  return {
+    [ITEM_CATEGORIES.AUTO]: {},
+    [ITEM_CATEGORIES.REAL_ESTATE]: {},
+    [ITEM_CATEGORIES.ELECTRONICS]: {},
+  };
+}
+
+function parseCategory(value: string | null): Category {
+  if (value && Object.values(ITEM_CATEGORIES).includes(value as Category)) {
+    return value as Category;
+  }
+  return ITEM_CATEGORIES.ELECTRONICS;
+}
+
+function storeParamsForCategory(
+  bucket: ParamsByCategory,
+  category: Category,
+  params: ItemEditFormValues['params'],
+) {
+  switch (category) {
+    case ITEM_CATEGORIES.AUTO:
+      bucket[ITEM_CATEGORIES.AUTO] = params as ParamsAuto;
+      break;
+    case ITEM_CATEGORIES.REAL_ESTATE:
+      bucket[ITEM_CATEGORIES.REAL_ESTATE] = params as ParamsRealEstate;
+      break;
+    default:
+      bucket[ITEM_CATEGORIES.ELECTRONICS] = params as ParamsElectronics;
+  }
+}
 
 export function useAdEditFormModel({ id, item, warningStyles }: UseAdEditFormModelParams) {
   const navigate = useNavigate();
@@ -47,11 +85,11 @@ export function useAdEditFormModel({ id, item, warningStyles }: UseAdEditFormMod
     }),
   });
 
-  const paramsByCategoryRef = useRef<Record<Category, unknown>>({
-    [ITEM_CATEGORIES.AUTO]: {},
-    [ITEM_CATEGORIES.REAL_ESTATE]: {},
-    [ITEM_CATEGORIES.ELECTRONICS]: {},
-    [item.category]: item.params ?? {},
+  const paramsByCategoryRef = useRef<ParamsByCategory>({
+    ...getEmptyParamsByCategory(),
+    [ITEM_CATEGORIES.AUTO]: item.category === ITEM_CATEGORIES.AUTO ? item.params ?? {} : {},
+    [ITEM_CATEGORIES.REAL_ESTATE]: item.category === ITEM_CATEGORIES.REAL_ESTATE ? item.params ?? {} : {},
+    [ITEM_CATEGORIES.ELECTRONICS]: item.category === ITEM_CATEGORIES.ELECTRONICS ? item.params ?? {} : {},
   });
 
   const maybeWarnIfEmpty = useCallback(
@@ -65,9 +103,10 @@ export function useAdEditFormModel({ id, item, warningStyles }: UseAdEditFormMod
 
   const setCategoryParams = useCallback(
     (next: ItemEditFormValues['params']) => {
+      storeParamsForCategory(paramsByCategoryRef.current, form.values.category, next);
       form.setFieldValue('params', next);
     },
-    [form],
+    [form.setFieldValue, form.values.category],
   );
 
   const categoryOptions = useMemo(
@@ -123,24 +162,25 @@ export function useAdEditFormModel({ id, item, warningStyles }: UseAdEditFormMod
 
   const requiredOk = Boolean(form.values.category) && Boolean(form.values.title.trim()) && form.values.price !== null;
 
-  function onCategoryChange(value: string | null) {
-    const nextCategory = (value ?? ITEM_CATEGORIES.ELECTRONICS) as Category;
-    const currentCategory = form.values.category as Category;
-    paramsByCategoryRef.current[currentCategory] = form.values.params ?? {};
+  const onCategoryChange = useCallback(
+    (value: string | null) => {
+      const nextCategory = parseCategory(value);
+      const currentValues = form.values;
 
-    const nextParams = paramsByCategoryRef.current[nextCategory] ?? {};
+      storeParamsForCategory(paramsByCategoryRef.current, currentValues.category, currentValues.params);
 
-    form.setValues({
-      ...form.values,
-      category: nextCategory,
-      params: nextParams as ItemEditFormValues['params'],
-    } as ItemEditFormValues);
+      const nextParams = paramsByCategoryRef.current[nextCategory];
 
-    form.setDirty({
-      category: true,
-      params: true,
-    });
-  }
+      form.setFieldValue('category', nextCategory);
+      form.setFieldValue('params', nextParams);
+
+      form.setDirty({
+        category: true,
+        params: true,
+      });
+    },
+    [form],
+  );
 
   return {
     form,

@@ -20,11 +20,28 @@ export type WarningInputStyles = {
   };
 };
 
-type CategoryParamsProps = {
+export type MaybeWarnIfEmpty = (isRequired: boolean, value: unknown) => WarningInputStyles | undefined;
+
+type CategoryParamsProps<TParams> = {
+  params: TParams;
+  setParams: (next: TParams) => void;
+  maybeWarnIfEmpty: MaybeWarnIfEmpty;
+};
+
+export type CategoryParamsFieldsProps = {
+  category: Category;
   params: ItemEditFormValues['params'];
   setParams: (next: ItemEditFormValues['params']) => void;
-  maybeWarnIfEmpty: (isRequired: boolean, value: unknown) => WarningInputStyles | undefined;
+  maybeWarnIfEmpty: MaybeWarnIfEmpty;
 };
+
+function patchParams<TParams extends object>(base: TParams, patch: Partial<TParams>): TParams {
+  return { ...base, ...patch };
+}
+
+function toOptionalNumber(value: string | number) {
+  return typeof value === 'number' ? value : undefined;
+}
 
 type ClearableTextInputProps = {
   label: string;
@@ -61,202 +78,254 @@ const ClearableTextInput = memo(function ClearableTextInput({
   );
 });
 
-const AutoParamsFields = memo(function AutoParamsFields({ params, setParams, maybeWarnIfEmpty }: CategoryParamsProps) {
-  const autoParams = params as Partial<ParamsAuto>;
+function ParamsClearableText<TParams extends object>({
+  label,
+  placeholder,
+  params,
+  setParams,
+  field,
+  maybeWarnIfEmpty,
+}: {
+  label: string;
+  placeholder: string;
+  params: TParams;
+  setParams: (next: TParams) => void;
+  field: keyof TParams;
+  maybeWarnIfEmpty: MaybeWarnIfEmpty;
+}) {
+  const v = params[field];
+  const str = typeof v === 'string' ? v : '';
+  return (
+    <ClearableTextInput
+      label={label}
+      placeholder={placeholder}
+      value={str}
+      onChange={(nextValue) => setParams(patchParams(params, { [field]: nextValue || undefined } as Partial<TParams>))}
+      onClear={() => setParams(patchParams(params, { [field]: undefined } as Partial<TParams>))}
+      styles={maybeWarnIfEmpty(false, v)}
+    />
+  );
+}
+
+function ParamsOptionalSelect<TParams extends object>({
+  label,
+  data,
+  params,
+  setParams,
+  field,
+  maybeWarnIfEmpty,
+}: {
+  label: string;
+  data: { value: string; label: string }[];
+  params: TParams;
+  setParams: (next: TParams) => void;
+  field: keyof TParams;
+  maybeWarnIfEmpty: MaybeWarnIfEmpty;
+}) {
+  const raw = params[field];
+  return (
+    <Select
+      label={label}
+      placeholder="Выберите"
+      clearable
+      data={data}
+      value={raw != null && raw !== '' ? String(raw as string) : null}
+      onChange={(value) =>
+        setParams(patchParams(params, { [field]: (value ?? undefined) as TParams[keyof TParams] } as Partial<TParams>))
+      }
+      styles={maybeWarnIfEmpty(false, raw)}
+    />
+  );
+}
+
+function ParamsOptionalNumber<TParams extends object>({
+  label,
+  placeholder,
+  min,
+  params,
+  setParams,
+  field,
+  maybeWarnIfEmpty,
+}: {
+  label: string;
+  placeholder: string;
+  min?: number;
+  params: TParams;
+  setParams: (next: TParams) => void;
+  field: keyof TParams;
+  maybeWarnIfEmpty: MaybeWarnIfEmpty;
+}) {
+  const v = params[field];
+  return (
+    <NumberInput
+      label={label}
+      placeholder={placeholder}
+      hideControls
+      min={min}
+      value={typeof v === 'number' ? v : undefined}
+      onChange={(value) =>
+        setParams(patchParams(params, { [field]: toOptionalNumber(value) as TParams[keyof TParams] } as Partial<TParams>))
+      }
+      styles={maybeWarnIfEmpty(false, v)}
+    />
+  );
+}
+
+const AutoParamsFields = memo(function AutoParamsFields({ params, setParams, maybeWarnIfEmpty }: CategoryParamsProps<ParamsAuto>) {
+  const p = params;
 
   return (
     <Stack gap="sm">
-      <Select
+      <ParamsOptionalSelect
         label="Коробка передач"
-        placeholder="Выберите"
-        clearable
         data={AUTO_TRANSMISSION_OPTIONS}
-        value={autoParams.transmission ?? null}
-        onChange={(value) =>
-          setParams({
-            ...autoParams,
-            transmission: (value ?? undefined) as ParamsAuto['transmission'] | undefined,
-          })
-        }
-        styles={maybeWarnIfEmpty(false, autoParams.transmission)}
+        params={p}
+        setParams={setParams}
+        field="transmission"
+        maybeWarnIfEmpty={maybeWarnIfEmpty}
       />
-      <ClearableTextInput
+      <ParamsClearableText
         label="Марка"
         placeholder="Марка"
-        value={autoParams.brand ?? ''}
-        onChange={(nextValue) => setParams({ ...autoParams, brand: nextValue || undefined })}
-        onClear={() => setParams({ ...autoParams, brand: undefined })}
-        styles={maybeWarnIfEmpty(false, autoParams.brand)}
+        params={p}
+        setParams={setParams}
+        field="brand"
+        maybeWarnIfEmpty={maybeWarnIfEmpty}
       />
-      <ClearableTextInput
+      <ParamsClearableText
         label="Модель"
         placeholder="Модель"
-        value={autoParams.model ?? ''}
-        onChange={(nextValue) => setParams({ ...autoParams, model: nextValue || undefined })}
-        onClear={() => setParams({ ...autoParams, model: undefined })}
-        styles={maybeWarnIfEmpty(false, autoParams.model)}
+        params={p}
+        setParams={setParams}
+        field="model"
+        maybeWarnIfEmpty={maybeWarnIfEmpty}
       />
-      <NumberInput
+      <ParamsOptionalNumber
         label="Год выпуска"
         placeholder="Год"
-        hideControls
         min={1900}
-        value={autoParams.yearOfManufacture ?? undefined}
-        onChange={(value) =>
-          setParams({
-            ...autoParams,
-            yearOfManufacture: typeof value === 'number' ? value : undefined,
-          })
-        }
-        styles={maybeWarnIfEmpty(false, autoParams.yearOfManufacture)}
+        params={p}
+        setParams={setParams}
+        field="yearOfManufacture"
+        maybeWarnIfEmpty={maybeWarnIfEmpty}
       />
-      <NumberInput
+      <ParamsOptionalNumber
         label="Пробег (км)"
         placeholder="Пробег"
-        hideControls
         min={0}
-        value={autoParams.mileage ?? undefined}
-        onChange={(value) =>
-          setParams({
-            ...autoParams,
-            mileage: typeof value === 'number' ? value : undefined,
-          })
-        }
-        styles={maybeWarnIfEmpty(false, autoParams.mileage)}
+        params={p}
+        setParams={setParams}
+        field="mileage"
+        maybeWarnIfEmpty={maybeWarnIfEmpty}
       />
-      <NumberInput
+      <ParamsOptionalNumber
         label="Мощность двигателя (л.с.)"
         placeholder="Мощность"
-        hideControls
         min={0}
-        value={autoParams.enginePower ?? undefined}
-        onChange={(value) =>
-          setParams({
-            ...autoParams,
-            enginePower: typeof value === 'number' ? value : undefined,
-          })
-        }
-        styles={maybeWarnIfEmpty(false, autoParams.enginePower)}
+        params={p}
+        setParams={setParams}
+        field="enginePower"
+        maybeWarnIfEmpty={maybeWarnIfEmpty}
       />
     </Stack>
   );
 });
 
-const RealEstateParamsFields = memo(function RealEstateParamsFields({ params, setParams, maybeWarnIfEmpty }: CategoryParamsProps) {
-  const realEstateParams = params as Partial<ParamsRealEstate>;
+const RealEstateParamsFields = memo(function RealEstateParamsFields({
+  params,
+  setParams,
+  maybeWarnIfEmpty,
+}: CategoryParamsProps<ParamsRealEstate>) {
+  const p = params;
 
   return (
     <Stack gap="sm">
-      <Select
+      <ParamsOptionalSelect
         label="Тип"
-        placeholder="Выберите"
-        clearable
         data={REAL_ESTATE_TYPE_OPTIONS}
-        value={realEstateParams.type ?? null}
-        onChange={(value) =>
-          setParams({
-            ...realEstateParams,
-            type: (value ?? undefined) as ParamsRealEstate['type'] | undefined,
-          })
-        }
-        styles={maybeWarnIfEmpty(false, realEstateParams.type)}
+        params={p}
+        setParams={setParams}
+        field="type"
+        maybeWarnIfEmpty={maybeWarnIfEmpty}
       />
-      <ClearableTextInput
+      <ParamsClearableText
         label="Адрес"
         placeholder="Адрес"
-        value={realEstateParams.address ?? ''}
-        onChange={(nextValue) => setParams({ ...realEstateParams, address: nextValue || undefined })}
-        onClear={() => setParams({ ...realEstateParams, address: undefined })}
-        styles={maybeWarnIfEmpty(false, realEstateParams.address)}
+        params={p}
+        setParams={setParams}
+        field="address"
+        maybeWarnIfEmpty={maybeWarnIfEmpty}
       />
-      <NumberInput
+      <ParamsOptionalNumber
         label="Площадь (м²)"
         placeholder="Площадь"
-        hideControls
         min={0}
-        value={realEstateParams.area ?? undefined}
-        onChange={(value) =>
-          setParams({
-            ...realEstateParams,
-            area: typeof value === 'number' ? value : undefined,
-          })
-        }
-        styles={maybeWarnIfEmpty(false, realEstateParams.area)}
+        params={p}
+        setParams={setParams}
+        field="area"
+        maybeWarnIfEmpty={maybeWarnIfEmpty}
       />
-      <NumberInput
+      <ParamsOptionalNumber
         label="Этаж"
         placeholder="Этаж"
-        hideControls
         min={0}
-        value={realEstateParams.floor ?? undefined}
-        onChange={(value) =>
-          setParams({
-            ...realEstateParams,
-            floor: typeof value === 'number' ? value : undefined,
-          })
-        }
-        styles={maybeWarnIfEmpty(false, realEstateParams.floor)}
+        params={p}
+        setParams={setParams}
+        field="floor"
+        maybeWarnIfEmpty={maybeWarnIfEmpty}
       />
     </Stack>
   );
 });
 
-const ElectronicsParamsFields = memo(function ElectronicsParamsFields({ params, setParams, maybeWarnIfEmpty }: CategoryParamsProps) {
-  const electronicsParams = params as Partial<ParamsElectronics>;
+const ElectronicsParamsFields = memo(function ElectronicsParamsFields({
+  params,
+  setParams,
+  maybeWarnIfEmpty,
+}: CategoryParamsProps<ParamsElectronics>) {
+  const p = params;
 
   return (
     <Stack gap="sm">
-      <Select
+      <ParamsOptionalSelect
         label="Тип"
-        placeholder="Выберите"
-        clearable
         data={ELECTRONICS_TYPE_OPTIONS}
-        value={electronicsParams.type ?? null}
-        onChange={(value) =>
-          setParams({
-            ...electronicsParams,
-            type: (value ?? undefined) as ParamsElectronics['type'] | undefined,
-          })
-        }
-        styles={maybeWarnIfEmpty(false, electronicsParams.type)}
+        params={p}
+        setParams={setParams}
+        field="type"
+        maybeWarnIfEmpty={maybeWarnIfEmpty}
       />
-      <ClearableTextInput
+      <ParamsClearableText
         label="Бренд"
         placeholder="Бренд"
-        value={electronicsParams.brand ?? ''}
-        onChange={(nextValue) => setParams({ ...electronicsParams, brand: nextValue || undefined })}
-        onClear={() => setParams({ ...electronicsParams, brand: undefined })}
-        styles={maybeWarnIfEmpty(false, electronicsParams.brand)}
+        params={p}
+        setParams={setParams}
+        field="brand"
+        maybeWarnIfEmpty={maybeWarnIfEmpty}
       />
-      <ClearableTextInput
+      <ParamsClearableText
         label="Модель"
         placeholder="Модель"
-        value={electronicsParams.model ?? ''}
-        onChange={(nextValue) => setParams({ ...electronicsParams, model: nextValue || undefined })}
-        onClear={() => setParams({ ...electronicsParams, model: undefined })}
-        styles={maybeWarnIfEmpty(false, electronicsParams.model)}
+        params={p}
+        setParams={setParams}
+        field="model"
+        maybeWarnIfEmpty={maybeWarnIfEmpty}
       />
-      <Select
+      <ParamsOptionalSelect
         label="Состояние"
-        placeholder="Выберите"
-        clearable
         data={ELECTRONICS_CONDITION_OPTIONS}
-        value={electronicsParams.condition ?? null}
-        onChange={(value) =>
-          setParams({
-            ...electronicsParams,
-            condition: (value ?? undefined) as ParamsElectronics['condition'] | undefined,
-          })
-        }
-        styles={maybeWarnIfEmpty(false, electronicsParams.condition)}
+        params={p}
+        setParams={setParams}
+        field="condition"
+        maybeWarnIfEmpty={maybeWarnIfEmpty}
       />
-      <ClearableTextInput
+      <ParamsClearableText
         label="Цвет"
         placeholder="Цвет"
-        value={electronicsParams.color ?? ''}
-        onChange={(nextValue) => setParams({ ...electronicsParams, color: nextValue || undefined })}
-        onClear={() => setParams({ ...electronicsParams, color: undefined })}
-        styles={maybeWarnIfEmpty(false, electronicsParams.color)}
+        params={p}
+        setParams={setParams}
+        field="color"
+        maybeWarnIfEmpty={maybeWarnIfEmpty}
       />
     </Stack>
   );
@@ -267,12 +336,12 @@ export const CategoryParamsFields = memo(function CategoryParamsFields({
   params,
   setParams,
   maybeWarnIfEmpty,
-}: CategoryParamsProps & { category: Category }) {
+}: CategoryParamsFieldsProps) {
   if (category === ITEM_CATEGORIES.AUTO) {
-    return <AutoParamsFields params={params} setParams={setParams} maybeWarnIfEmpty={maybeWarnIfEmpty} />;
+    return <AutoParamsFields params={params as ParamsAuto} setParams={setParams} maybeWarnIfEmpty={maybeWarnIfEmpty} />;
   }
   if (category === ITEM_CATEGORIES.REAL_ESTATE) {
-    return <RealEstateParamsFields params={params} setParams={setParams} maybeWarnIfEmpty={maybeWarnIfEmpty} />;
+    return <RealEstateParamsFields params={params as ParamsRealEstate} setParams={setParams} maybeWarnIfEmpty={maybeWarnIfEmpty} />;
   }
-  return <ElectronicsParamsFields params={params} setParams={setParams} maybeWarnIfEmpty={maybeWarnIfEmpty} />;
+  return <ElectronicsParamsFields params={params as ParamsElectronics} setParams={setParams} maybeWarnIfEmpty={maybeWarnIfEmpty} />;
 });

@@ -1,11 +1,16 @@
 import { useMemo, useState } from 'react';
 
 import type { ChatContextRef } from '../components/ai-assist';
-import { AI_REQUEST_ERROR_MESSAGE } from '../components/ai-assist';
+import { AI_REQUEST_ERROR_MESSAGE } from '../models/constants';
 import type { ItemEditFormValues } from '../models/types';
 
 import { aiSuggestDescription, aiSuggestPrice } from '~/api';
-import { extractErrorMessage,parseSuggestedNumber, useAsyncPopoverRequest } from '~/shared';
+import {
+  extractErrorMessage,
+  parseSuggestedNumber,
+  useAsyncPopoverRequest,
+  type AsyncPopoverRequestState,
+} from '~/shared';
 
 type UseAdEditAiParams = {
   id: string;
@@ -13,25 +18,26 @@ type UseAdEditAiParams = {
 };
 
 type UseAdEditAiResult = Readonly<{
-  priceAiState: ReturnType<typeof useAsyncPopoverRequest<string>>;
-  descriptionAiState: ReturnType<typeof useAsyncPopoverRequest<string>>;
+  priceAiState: AsyncPopoverRequestState<string>;
+  descriptionAiState: AsyncPopoverRequestState<string>;
   descriptionAiBeforeText: string;
   aiSuggestedPrice: number | null;
   chatContext: ChatContextRef;
 }>;
 
 export function useAdEditAi({ id, values }: UseAdEditAiParams) {
+  const mapAiError = (error: unknown) => extractErrorMessage(error, AI_REQUEST_ERROR_MESSAGE);
+
+  const createSuggestionInput = () => ({
+    title: values.title,
+    category: values.category,
+    params: values.params,
+    description: values.description || undefined,
+  });
+
   const priceAiState = useAsyncPopoverRequest<string>({
-    mutationFn: async () => {
-      const res = await aiSuggestPrice({
-        title: values.title,
-        category: values.category,
-        params: values.params,
-        description: values.description || undefined,
-      });
-      return res.text;
-    },
-    mapErrorToMessage: (error) => extractErrorMessage(error, AI_REQUEST_ERROR_MESSAGE),
+    mutationFn: async () => (await aiSuggestPrice(createSuggestionInput())).text,
+    mapErrorToMessage: mapAiError,
   });
 
   const [descriptionAiBeforeText, setDescriptionAiBeforeText] = useState<string>('');
@@ -39,15 +45,9 @@ export function useAdEditAi({ id, values }: UseAdEditAiParams) {
   const descriptionAiState = useAsyncPopoverRequest<string>({
     mutationFn: async () => {
       setDescriptionAiBeforeText(values.description);
-      const res = await aiSuggestDescription({
-        title: values.title,
-        category: values.category,
-        params: values.params,
-        description: values.description || undefined,
-      });
-      return res.text;
+      return (await aiSuggestDescription(createSuggestionInput())).text;
     },
-    mapErrorToMessage: (error) => extractErrorMessage(error, AI_REQUEST_ERROR_MESSAGE),
+    mapErrorToMessage: mapAiError,
   });
 
   const aiSuggestedPrice = useMemo(() => parseSuggestedNumber(priceAiState.data ?? ''), [priceAiState.data]);
