@@ -9,6 +9,7 @@ import {
   Group,
   Loader,
   Pagination,
+  Paper,
   ScrollArea,
   Select,
   SimpleGrid,
@@ -32,7 +33,7 @@ import {
 } from '@ads/shared';
 
 import { apiAds } from '~/api';
-import { AdGridCard, AdListCard, type AdsResponse, CATEGORIES_FORM, getAdsPlural,LIMIT_ADS, SORT_FORM } from '~/domain';
+import { AdGridCard, AdListCard, type AdsResponse, CATEGORIES_FORM, getAdsPlural, LIMIT_ADS, SORT_FORM } from '~/domain';
 import { useUiPreference, useUrlSearchState } from '~/shared';
 
 export default function () {
@@ -125,93 +126,97 @@ export default function () {
             `${getAdsQuery.data?.data.total} ${getAdsPlural(getAdsQuery.data?.data.total || 0)}`
           )}
         </Title>
-        <Group>
-          <TextInput
-            flex={1}
-            radius="md"
-            placeholder="Найти объявление...."
-            rightSection={
-              getAdsQuery.isLoading || isUiTransitionPending ? (
-                <Loader size={20} />
-              ) : form.values.q ? (
-                <ActionIcon onClick={() => form.setFieldValue('q', '')} variant="light" color="gray" aria-label="Settings">
-                  <MdOutlineClear size={20} />
-                </ActionIcon>
-              ) : (
-                <MdSearch size={20} />
-              )
-            }
-            key={form.key('q')}
-            {...form.getInputProps('q')}
-          />
-          <ActionIcon.Group>
-            <ActionIcon
+        <Paper shadow="xs" radius="md" p="md">
+          <Group>
+            <TextInput
+              flex={1}
               radius="md"
-              onClick={() =>
-                startUiTransition(() => {
-                  setViewMode('grid');
-                })
+              placeholder="Найти объявление...."
+              rightSection={
+                getAdsQuery.isLoading || isUiTransitionPending ? (
+                  <Loader size={20} />
+                ) : form.values.q ? (
+                  <ActionIcon onClick={() => form.setFieldValue('q', '')} variant="light" color="gray" aria-label="Settings">
+                    <MdOutlineClear size={20} />
+                  </ActionIcon>
+                ) : (
+                  <MdSearch size={20} />
+                )
               }
-              variant={viewMode === 'grid' ? 'outline' : 'default'}
-              size="lg"
-              aria-label="Gallery"
-            >
-              <MdGridView size={20} />
-            </ActionIcon>
-
-            <ActionIcon
-              radius="md"
-              onClick={() =>
-                startUiTransition(() => {
-                  setViewMode('list');
-                })
-              }
-              variant={viewMode === 'list' ? 'outline' : 'default'}
-              size="lg"
-              aria-label="Settings"
-            >
-              <MdFormatListBulleted size={20} />
-            </ActionIcon>
-          </ActionIcon.Group>
-          <Select w={260} radius="md" key={form.key('sort')} {...form.getInputProps('sort')} data={SORT_FORM} allowDeselect={false} />
-        </Group>
-        <Group align="flex-start">
-          <Stack w={200}>
-            <Title order={3}>Фильтры</Title>
-            <Accordion defaultValue="category">
-              <Accordion.Item value={'category'}>
-                <Accordion.Control>Категория</Accordion.Control>
-                <Accordion.Panel>
-                  <Checkbox.Group key={form.key('categories')} {...form.getInputProps('categories')}>
-                    <Stack mt="xs">
-                      {CATEGORIES_FORM.map((category) => (
-                        <Checkbox key={category.value} value={category.value} label={category.label} />
-                      ))}
-                    </Stack>
-                  </Checkbox.Group>
-                </Accordion.Panel>
-              </Accordion.Item>
-            </Accordion>
-            <Switch
-              key={form.key('needsRevision')}
-              {...form.getInputProps('needsRevision', { type: 'checkbox' })}
-              label="Только требующие доработок"
+              key={form.key('q')}
+              {...form.getInputProps('q')}
             />
-            <Button
-              disabled={!isFullyForm}
-              onClick={() =>
-                startUiTransition(() => {
-                  form.setValues({
-                    q: '',
-                    categories: [],
-                    needsRevision: false,
-                  });
-                })
-              }
-            >
-              Сбросить фильтры
-            </Button>
-          </Stack>
+            <ActionIcon.Group>
+              <ActionIcon
+                radius="md"
+                onClick={() =>
+                  startUiTransition(() => {
+                    setViewMode('grid');
+                  })
+                }
+                variant={viewMode === 'grid' ? 'outline' : 'default'}
+                size="lg"
+                aria-label="Gallery"
+              >
+                <MdGridView size={20} />
+              </ActionIcon>
+
+              <ActionIcon
+                radius="md"
+                onClick={() =>
+                  startUiTransition(() => {
+                    setViewMode('list');
+                  })
+                }
+                variant={viewMode === 'list' ? 'outline' : 'default'}
+                size="lg"
+                aria-label="Settings"
+              >
+                <MdFormatListBulleted size={20} />
+              </ActionIcon>
+            </ActionIcon.Group>
+            <Select w={260} radius="md" key={form.key('sort')} {...form.getInputProps('sort')} data={SORT_FORM} allowDeselect={false} />
+          </Group>
+        </Paper>
+        <Group align="flex-start">
+          <Paper shadow="xs" radius="md" p="md">
+            <Stack w={200}>
+              <Title order={3}>Фильтры</Title>
+              <Accordion defaultValue="category">
+                <Accordion.Item value={'category'}>
+                  <Accordion.Control>Категория</Accordion.Control>
+                  <Accordion.Panel>
+                    <Checkbox.Group key={form.key('categories')} {...form.getInputProps('categories')}>
+                      <Stack mt="xs">
+                        {CATEGORIES_FORM.map((category) => (
+                          <Checkbox key={category.value} value={category.value} label={category.label} />
+                        ))}
+                      </Stack>
+                    </Checkbox.Group>
+                  </Accordion.Panel>
+                </Accordion.Item>
+              </Accordion>
+              <Switch
+                key={form.key('needsRevision')}
+                {...form.getInputProps('needsRevision', { type: 'checkbox' })}
+                label="Только требующие доработок"
+              />
+              <Button
+                disabled={!isFullyForm}
+                onClick={() =>
+                  startUiTransition(() => {
+                    form.setValues({
+                      q: '',
+                      categories: [],
+                      needsRevision: false,
+                    });
+                  })
+                }
+              >
+                Сбросить фильтры
+              </Button>
+            </Stack>
+          </Paper>
           <Stack flex={1}>
             {!getAdsQuery.data?.data.items.length && !getAdsQuery.isLoading && <Alert icon={<MdInfo />} title="Ничего не найдено"></Alert>}
             {getAdsQuery.isError && <Alert color="red" icon={<MdInfo />} title="Ошибка"></Alert>}

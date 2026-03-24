@@ -113,7 +113,7 @@ export default function () {
       <Group align="flex-start">
         <Stack>
           <ImagePlaceholder w={480} h={360} iconSize={80} />
-          <ScrollArea w={480} h={70}>
+          <ScrollArea w={480} h={85}>
             <Group w="max-content">
               {[...new Array(6)].map((_, index) => (
                 <ImagePlaceholder key={index} w={100} h={70} iconSize={28} />
