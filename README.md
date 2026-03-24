@@ -10,8 +10,23 @@
 ```bash
 pnpm install
 ```
+## Production запуск
 
-## Быстрый старт
+### Prod (по умолчанию: GigaChat)
+
+```bash
+pnpm run prod
+```
+или
+```bash
+pnpm run prod:gigachat
+```
+### Prod (Ollama)
+```bash
+pnpm run prod:ollama
+```
+
+## Dev запуск
 
 ### Dev (по умолчанию: GigaChat)
 
@@ -31,23 +46,6 @@ pnpm run dev:gigachat
 ```bash
 pnpm run dev:ollama
 ```
-
-## Production запуск
-
-### Prod (по умолчанию: GigaChat)
-
-```bash
-pnpm run prod
-```
-или
-```bash
-pnpm run prod:gigachat
-```
-### Prod (Ollama)
-```bash
-pnpm run prod:ollama
-```
-
 
 ## Настройка GigaChat
 
