@@ -5,25 +5,25 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
-} from "react-router";
-
-import type { Route } from "./+types/root";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-
-import '@mantine/core/styles.css';
-import '@mantine/notifications/styles.css';
+} from 'react-router';
 
 import {
   ActionIcon,
   ColorSchemeScript,
-  MantineProvider,
-  Tooltip,
   localStorageColorSchemeManager,
   mantineHtmlProps,
+  MantineProvider,
+  Tooltip,
   useMantineColorScheme,
 } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MdDarkMode, MdLightMode } from 'react-icons/md';
+
+import '@mantine/core/styles.css';
+import '@mantine/notifications/styles.css';
+
+import type { Route } from './+types/root';
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -31,9 +31,9 @@ export const queryClient = new QueryClient({
       refetchOnMount: false,
       retry: 0,
       refetchOnReconnect: false,
-    }
-  }
-})
+    },
+  },
+});
 
 const colorSchemeManager = localStorageColorSchemeManager({ key: 'color-scheme' });
 
@@ -78,29 +78,26 @@ function ThemeToggle() {
 }
 
 export default function App() {
-  return <QueryClientProvider client={queryClient}>
-    <MantineProvider
-      colorSchemeManager={colorSchemeManager}
-      defaultColorScheme="auto"
-    >
-      <Notifications />
-      <ThemeToggle />
-      <Outlet />
-    </MantineProvider>
-  </QueryClientProvider>;
+  return (
+    <QueryClientProvider client={queryClient}>
+      <MantineProvider colorSchemeManager={colorSchemeManager} defaultColorScheme="auto">
+        <Notifications />
+        <ThemeToggle />
+        <Outlet />
+      </MantineProvider>
+    </QueryClientProvider>
+  );
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  let message = "Oops!";
-  let details = "An unexpected error occurred.";
+  let message = 'Oops!';
+  let details = 'An unexpected error occurred.';
   let stack: string | undefined;
 
   if (isRouteErrorResponse(error)) {
-    message = error.status === 404 ? "404" : "Error";
+    message = error.status === 404 ? '404' : 'Error';
     details =
-      error.status === 404
-        ? "The requested page could not be found."
-        : error.statusText || details;
+      error.status === 404 ? 'The requested page could not be found.' : error.statusText || details;
   } else if (import.meta.env.DEV && error && error instanceof Error) {
     details = error.message;
     stack = error.stack;
