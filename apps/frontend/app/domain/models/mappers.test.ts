@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildAdDetailsParamsViewModel } from './selectors';
 import { mapItemDetailsToEditFormValues } from './mappers';
+import { buildAdDetailsParamsViewModel } from './selectors';
 
 describe('domain mappers', () => {
   it('maps item details to edit form values preserving category params', () => {

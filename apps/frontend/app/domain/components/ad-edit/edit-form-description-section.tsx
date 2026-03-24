@@ -1,14 +1,13 @@
 import { Stack, Textarea, Title } from '@mantine/core';
 import type { UseFormReturnType } from '@mantine/form';
 
-import { ClearFieldAction } from '~/shared';
-import type { AsyncPopoverRequestState } from '~/shared';
-
 import type { ItemEditFormValues } from '../../models/types';
 import type { MaybeWarnIfEmpty } from '../category-params-fields';
-
 import { AdEditAiSuggestBlock } from './ad-edit-ai-suggest-block';
 import { DescriptionAiDiffSection } from './description-ai-diff-section';
+
+import type { AsyncPopoverRequestState } from '~/shared';
+import { ClearFieldAction } from '~/shared';
 
 export type EditFormDescriptionSectionProps = {
   form: UseFormReturnType<ItemEditFormValues>;

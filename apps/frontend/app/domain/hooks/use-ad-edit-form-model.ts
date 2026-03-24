@@ -106,7 +106,7 @@ export function useAdEditFormModel({ id, item, warningStyles }: UseAdEditFormMod
       storeParamsForCategory(paramsByCategoryRef.current, form.values.category, next);
       form.setFieldValue('params', next);
     },
-    [form.setFieldValue, form.values.category],
+    [form],
   );
 
   const categoryOptions = useMemo(

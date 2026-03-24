@@ -2,9 +2,9 @@ import { useMutation } from '@tanstack/react-query';
 
 import { useCallback, useMemo, useState } from 'react';
 
-import { aiChatAboutItem, type AiChatAboutItemInput, type AiChatMessage } from '~/api';
-
 import { buildAiChatRequest } from '../models/ai-mappers';
+
+import { aiChatAboutItem, type AiChatAboutItemInput, type AiChatMessage } from '~/api';
 
 export type ChatMessage = AiChatMessage & { id: string };
 

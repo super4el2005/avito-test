@@ -6,10 +6,10 @@ import type { ItemEditFormValues } from '../models/types';
 
 import { aiSuggestDescription, aiSuggestPrice } from '~/api';
 import {
+  type AsyncPopoverRequestState,
   extractErrorMessage,
   parseSuggestedNumber,
   useAsyncPopoverRequest,
-  type AsyncPopoverRequestState,
 } from '~/shared';
 
 type UseAdEditAiParams = {
@@ -26,14 +26,18 @@ type UseAdEditAiResult = Readonly<{
 }>;
 
 export function useAdEditAi({ id, values }: UseAdEditAiParams) {
-  const mapAiError = (error: unknown) => extractErrorMessage(error, AI_REQUEST_ERROR_MESSAGE);
+  function mapAiError(error: unknown) {
+    return extractErrorMessage(error, AI_REQUEST_ERROR_MESSAGE);
+  }
 
-  const createSuggestionInput = () => ({
-    title: values.title,
-    category: values.category,
-    params: values.params,
-    description: values.description || undefined,
-  });
+  function createSuggestionInput() {
+    return {
+      title: values.title,
+      category: values.category,
+      params: values.params,
+      description: values.description || undefined,
+    };
+  }
 
   const priceAiState = useAsyncPopoverRequest<string>({
     mutationFn: async () => (await aiSuggestPrice(createSuggestionInput())).text,

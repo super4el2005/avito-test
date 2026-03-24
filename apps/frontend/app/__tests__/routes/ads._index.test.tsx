@@ -1,10 +1,10 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MantineProvider } from '@mantine/core';
 
-import { describe, expect, it, vi, afterEach, beforeAll, beforeEach } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+import { afterEach, beforeAll, beforeEach,describe, expect, it, vi } from 'vitest';
 
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-
 import AdsIndexRoute from '~/routes/ads._index';
 
 const setSearchValues = vi.fn();

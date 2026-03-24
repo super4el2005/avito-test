@@ -20,7 +20,7 @@ export const AdGridCard = memo(function AdGridCard({ ad }: AdCardProps) {
         <ImagePlaceholder h={150} w="100%" />
       </Card.Section>
 
-      <Badge radius="md" pos="absolute" top="47%">
+      <Badge radius="md" variant='default' pos="absolute" top="47%">
         {CATEGORIES_TRANSLATE[ad.category]}
       </Badge>
       <Stack gap="xs" mt="md">

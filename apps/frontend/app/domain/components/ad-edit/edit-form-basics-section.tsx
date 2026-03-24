@@ -1,12 +1,11 @@
 import { Container, Divider, Group, NumberInput, Select, Stack, TextInput } from '@mantine/core';
 import type { UseFormReturnType } from '@mantine/form';
 
-import { ClearFieldAction } from '~/shared';
-import type { AsyncPopoverRequestState } from '~/shared';
-
 import type { Category, ItemEditFormValues } from '../../models/types';
-
 import { AdEditAiSuggestBlock } from './ad-edit-ai-suggest-block';
+
+import type { AsyncPopoverRequestState } from '~/shared';
+import { ClearFieldAction } from '~/shared';
 
 export type EditFormBasicsSectionProps = {
   categoryOptions: ReadonlyArray<{ value: Category; label: string }>;

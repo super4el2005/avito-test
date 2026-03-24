@@ -2,8 +2,8 @@ import { Container, Stack, Title } from '@mantine/core';
 import type { UseFormReturnType } from '@mantine/form';
 
 import type { ItemEditFormValues } from '../../models/types';
-import { CategoryParamsFields } from '../category-params-fields';
 import type { MaybeWarnIfEmpty } from '../category-params-fields';
+import { CategoryParamsFields } from '../category-params-fields';
 
 export type EditFormCharacteristicsSectionProps = {
   form: UseFormReturnType<ItemEditFormValues>;

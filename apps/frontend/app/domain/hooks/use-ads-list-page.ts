@@ -9,12 +9,12 @@ import {
   ItemsGetInQuerySchema,
 } from '@ads/shared';
 
+import { buildLoadingSkeletonKeys } from '../components/ads-loading-skeletons';
+import { LIMIT_ADS } from '../models/constants';
+import type { AdsResponse, Category, SortFormValue } from '../models/types';
+
 import { apiAds } from '~/api';
 import { useUiPreference, useUrlSearchState } from '~/shared';
-
-import type { AdsResponse, Category, SortFormValue } from '../models/types';
-import { LIMIT_ADS } from '../models/constants';
-import { buildLoadingSkeletonKeys } from '../components/ads-loading-skeletons';
 
 /** Состояние списка в URL и в форме Mantine (поле `sort` — «column:direction», как в SORT_FORM). */
 export type AdsListPageSearchValues = {
@@ -121,18 +121,18 @@ export function useAdsListPage() {
     (value: string) => {
       form.setFieldValue('q', value);
     },
-    [form.setFieldValue],
+    [form],
   );
 
   const handleClearQuery = useCallback(() => {
     form.setFieldValue('q', '');
-  }, [form.setFieldValue]);
+  }, [form]);
 
   const handleSortChange = useCallback(
     (value: SortFormValue) => {
       form.setFieldValue('sort', value);
     },
-    [form.setFieldValue],
+    [form],
   );
 
   const handleViewModeChange = useCallback(
@@ -148,14 +148,14 @@ export function useAdsListPage() {
     (value: Category[]) => {
       form.setFieldValue('categories', value);
     },
-    [form.setFieldValue],
+    [form],
   );
 
   const handleNeedsRevisionChange = useCallback(
     (value: boolean) => {
       form.setFieldValue('needsRevision', value);
     },
-    [form.setFieldValue],
+    [form],
   );
 
   const handleResetFilters = useCallback(() => {
@@ -168,13 +168,13 @@ export function useAdsListPage() {
         needsRevision: false,
       });
     });
-  }, [defaultSort, form.setValues, startUiTransition]);
+  }, [defaultSort, form, startUiTransition]);
 
   const handlePageChange = useCallback(
     (value: number) => {
       form.setFieldValue('page', value);
     },
-    [form.setFieldValue],
+    [form],
   );
 
   return {

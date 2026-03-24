@@ -5,7 +5,6 @@ import { lazy, Suspense, useCallback, useMemo } from 'react';
 import { useAdEditAi } from '../../hooks/use-ad-edit-ai';
 import { useAdEditFormModel } from '../../hooks/use-ad-edit-form-model';
 import type { ItemDetailsResponse } from '../../models/types';
-
 import { EditFormBasicsSection } from './edit-form-basics-section';
 import { EditFormCharacteristicsSection } from './edit-form-characteristics-section';
 import { EditFormDescriptionSection } from './edit-form-description-section';

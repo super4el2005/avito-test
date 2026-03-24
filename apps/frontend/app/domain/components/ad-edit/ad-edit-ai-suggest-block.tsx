@@ -1,10 +1,9 @@
 import type { ReactNode } from 'react';
 
-import type { AsyncPopoverRequestState } from '~/shared';
-
 import { AiSuggestionPopover } from '../ai-assist';
-
 import { AiSuggestionPopoverContent } from './ai-suggestion-popover-content';
+
+import type { AsyncPopoverRequestState } from '~/shared';
 
 export type AdEditAiSuggestBlockProps = {
   aiState: AsyncPopoverRequestState<string>;

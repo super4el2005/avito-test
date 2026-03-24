@@ -1,4 +1,3 @@
-export { apiAds, apiOllama } from './axios-instances';
 export type {
   AiChatAboutItemInput,
   AiChatMessage,
@@ -8,3 +7,4 @@ export type {
   AiPriceSuggestionResponse,
 } from './ai-provider';
 export { aiChatAboutItem, aiSuggestDescription, aiSuggestPrice } from './ai-provider';
+export { apiAds, apiOllama } from './axios-instances';

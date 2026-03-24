@@ -6,7 +6,6 @@ import { memo } from 'react';
 import { MdChatBubbleOutline, MdOutlineClear } from 'react-icons/md';
 
 import { useAiChat } from '../../hooks/use-ai-chat';
-
 import { AiChatMessagesList } from './ai-chat-messages-list';
 import type { ChatContextRef } from './chat-context-types';
 
