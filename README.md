@@ -11,9 +11,12 @@
 pnpm install
 ```
 ## Production запуск
-
+http://localhost:3000
 ### Prod (по умолчанию: GigaChat)
-
+```bash
+pnpm prod
+```
+или
 ```bash
 pnpm run prod
 ```
