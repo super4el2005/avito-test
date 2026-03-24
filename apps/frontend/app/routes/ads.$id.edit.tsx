@@ -17,7 +17,7 @@ import {
 
 import { useQuery } from '@tanstack/react-query';
 
-import { useCallback, useMemo } from 'react';
+import { lazy, Suspense, useCallback, useMemo } from 'react';
 
 import { MdInfo } from 'react-icons/md';
 
@@ -25,17 +25,24 @@ import { Link, useParams } from 'react-router';
 
 import { apiAds } from '~/api';
 import {
-  AiChatWidget,
   AiPopoverActions,
   AiPopoverError,
   AiSuggestionPopover,
   CategoryParamsFields,
-  DiffText,
   type ItemDetailsResponse,
   useAdEditAi,
   useAdEditFormModel,
 } from '~/domain';
 import { ClearFieldAction } from '~/shared';
+
+const AiChatWidgetLazy = lazy(async () => {
+  const module = await import('~/domain/components/ai-assist');
+  return { default: module.AiChatWidget };
+});
+const DiffTextLazy = lazy(async () => {
+  const module = await import('~/domain/components/diff-text');
+  return { default: module.DiffText };
+});
 
 function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
   const theme = useMantineTheme();
@@ -220,7 +227,9 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
                             Стало
                           </Text>
                           <Paper withBorder p="sm" radius="md">
-                            <DiffText before={adEditAi.descriptionAiBeforeText || ''} after={adEditAi.descriptionAiState.data} />
+                            <Suspense fallback={<Text c="dimmed">Сравниваем...</Text>}>
+                              <DiffTextLazy before={adEditAi.descriptionAiBeforeText || ''} after={adEditAi.descriptionAiState.data} />
+                            </Suspense>
                           </Paper>
                         </Stack>
                       </Group>
@@ -251,7 +260,9 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
         </Stack>
       </Container>
 
-      <AiChatWidget itemContext={adEditAi.chatContext} />
+      <Suspense fallback={null}>
+        <AiChatWidgetLazy itemContext={adEditAi.chatContext} />
+      </Suspense>
     </>
   );
 }

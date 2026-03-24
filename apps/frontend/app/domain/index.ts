@@ -1,6 +1,7 @@
 export { AdGridCard, AdListCard } from './components/ad-cards';
 export type { ChatContextRef } from './components/ai-assist';
-export { AI_REQUEST_ERROR_MESSAGE, AiChatWidget, AiPopoverActions, AiPopoverError, AiSuggestionPopover, DiffText } from './components/ai-assist';
+export { AI_REQUEST_ERROR_MESSAGE, AiChatWidget, AiPopoverActions, AiPopoverError, AiSuggestionPopover } from './components/ai-assist';
+export { DiffText } from './components/diff-text';
 export type { WarningInputStyles } from './components/category-params-fields';
 export { CategoryParamsFields } from './components/category-params-fields';
 export { useAdEditAi } from './hooks/use-ad-edit-ai';

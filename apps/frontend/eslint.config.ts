@@ -218,6 +218,28 @@ export default defineConfig([
     },
   },
   {
+    files: ['app/shared/**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '~/domain',
+              message: 'Файлы из app/shared не должны импортировать из app/domain.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['~/domain/*', '../domain', '../domain/*', '../../domain', '../../domain/*'],
+              message: 'Файлы из app/shared не должны импортировать из app/domain.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     rules: {
       'react/display-name': 'off',
       'react/react-in-jsx-scope': 'off',

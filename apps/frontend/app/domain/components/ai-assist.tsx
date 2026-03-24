@@ -3,9 +3,7 @@ import { useDisclosure } from '@mantine/hooks';
 
 import { useMutation } from '@tanstack/react-query';
 
-import { diffWordsWithSpace } from 'diff';
-
-import { memo, type ReactNode, useCallback, useMemo, useState } from 'react';
+import { memo, type ReactNode, useCallback, useState } from 'react';
 
 import { MdChatBubbleOutline, MdLightbulbOutline, MdOutlineClear } from 'react-icons/md';
 
@@ -24,30 +22,6 @@ export type ChatContextRef = {
   price: number | null;
   description?: string;
 };
-
-export const DiffText = memo(function DiffText({ before, after }: { before: string; after: string }) {
-  const parts = useMemo(() => diffWordsWithSpace(before ?? '', after ?? ''), [before, after]);
-  return (
-    <Text style={{ whiteSpace: 'pre-wrap', lineHeight: 1.35 }}>
-      {parts.map((part, idx) => {
-        const bg = part.added ? 'rgba(64, 192, 87, 0.18)' : part.removed ? 'rgba(250, 82, 82, 0.16)' : undefined;
-        const decoration = part.removed ? 'line-through' : undefined;
-        return (
-          <Text
-            key={idx}
-            span
-            style={{
-              background: bg,
-              textDecoration: decoration,
-            }}
-          >
-            {part.value}
-          </Text>
-        );
-      })}
-    </Text>
-  );
-});
 
 export const AiPopoverError = memo(function AiPopoverError({ message, onClose }: { message: string; onClose: () => void }) {
   return (

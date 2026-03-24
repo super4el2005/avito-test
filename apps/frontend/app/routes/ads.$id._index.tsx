@@ -1,4 +1,4 @@
-import { Alert, Button, Container, Divider, Group, List, Skeleton, Stack, Text, Title } from '@mantine/core';
+import { Alert, Box, Button, Container, Divider, Group, List, ScrollArea, Skeleton, Stack, Text, Title } from '@mantine/core';
 
 import { useQuery } from '@tanstack/react-query';
 
@@ -113,11 +113,13 @@ export default function () {
       <Group align="flex-start">
         <Stack>
           <ImagePlaceholder w={480} h={360} iconSize={80} />
-          <Group justify="space-between">
-            {[...new Array(4)].map((_, index) => (
-              <ImagePlaceholder key={index} w={100} h={70} iconSize={28} />
-            ))}
-          </Group>
+          <ScrollArea w={480} h={70}>
+            <Group w="max-content">
+              {[...new Array(6)].map((_, index) => (
+                <ImagePlaceholder key={index} w={100} h={70} iconSize={28} />
+              ))}
+            </Group>
+          </ScrollArea>
         </Stack>
         <Stack w={500}>
           {ad?.needsRevision && (
