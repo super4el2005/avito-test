@@ -24,9 +24,15 @@ export default defineConfig([
         'error',
         {
           groups: [
-            ['^react$', '^react-dom$'],
-            ['^react-router$', '^@react-router'],
-            ['^@mantine', '^@tanstack', '^@ant-design', '^[a-z]'],
+            ['^@mantine'],
+            ['^@react-router'],
+            ['^@tanstack'],
+            ['^diff$'],
+            ['^react$'],
+            ['^react-dom$'],
+            ['^react-icons'],
+            ['^react-router$'],
+            ['^[a-z]'],
             ['^@ads/shared$', '^@ads/'],
             ['^\\u0000'],
             ['^\\.\\.(?!/?$)', '^\\.\\./?$', '^\\./(?=.*/)(?!/?$)', '^\\.(?!/?$)', '^\\./?$'],
@@ -54,6 +60,11 @@ export default defineConfig([
     rules: {
       'react/display-name': 'off',
       'react/react-in-jsx-scope': 'off',
+    },
+    settings: {
+      react: {
+        version: '19.0',
+      },
     },
   },
 ]);

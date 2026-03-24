@@ -1,7 +1,3 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-
-import { Link, useNavigate, useParams } from 'react-router';
-
 import {
   ActionIcon,
   Alert,
@@ -24,9 +20,16 @@ import {
 import { useForm } from '@mantine/form';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
+
 import { useMutation, useQuery } from '@tanstack/react-query';
+
 import { diffWordsWithSpace } from 'diff';
+
+import { useEffect, useMemo, useRef, useState } from 'react';
+
 import { MdChatBubbleOutline, MdInfo, MdLightbulbOutline, MdOutlineClear } from 'react-icons/md';
+
+import { Link, useNavigate, useParams } from 'react-router';
 
 import { ITEM_CATEGORIES } from '@ads/shared';
 import type { Item } from '@ads/shared';
