@@ -26,6 +26,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { MdInfo, MdOutlineClear, MdLightbulbOutline } from 'react-icons/md';
 import { Link, useNavigate, useParams } from 'react-router';
 import { aiChatAboutItem, aiSuggestDescription, aiSuggestPrice, apiAds, type AiChatMessage } from '~/api';
+import { queryClient } from '~/root';
 import { diffWordsWithSpace } from 'diff';
 
 type Category = (typeof ITEM_CATEGORIES)[keyof typeof ITEM_CATEGORIES];
@@ -260,7 +261,14 @@ export default function AdsEditRoute() {
             };
             return apiAds.put(`/items/${id}`, payload);
         },
-        onSuccess: () => {
+        onSuccess: async () => {
+            await queryClient.invalidateQueries({ queryKey: ['ads'] });
+            await queryClient.fetchQuery({
+                queryKey: ['ad', id],
+                queryFn: ({ signal }) =>
+                    apiAds.get<ItemDetailsResponse>(`/items/${id}`, { signal }),
+            });
+
             notifications.show({
                 position: 'top-right',
                 title: 'Изменения сохранены',

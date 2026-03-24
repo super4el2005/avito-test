@@ -25,7 +25,7 @@ import {
 import { Notifications } from '@mantine/notifications';
 import { MdDarkMode, MdLightMode } from 'react-icons/md';
 
-const queryClient = new QueryClient({
+export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnMount: false,
