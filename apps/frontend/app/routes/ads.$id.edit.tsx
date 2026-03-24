@@ -262,6 +262,7 @@ export default function AdsEditRoute() {
         },
         onSuccess: () => {
             notifications.show({
+                position: 'top-right',
                 title: 'Изменения сохранены',
                 message: '',
                 color: 'green',
@@ -270,6 +271,7 @@ export default function AdsEditRoute() {
         },
         onError: error => {
             notifications.show({
+                position: 'top-right',
                 title: 'Ошибка сохранения',
                 message: getBackendErrorMessage(error),
                 color: 'red',
