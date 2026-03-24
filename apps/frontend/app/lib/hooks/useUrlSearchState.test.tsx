@@ -13,9 +13,9 @@ type SearchState = {
   categories: string[];
 };
 
-const wrapper = ({ children }: PropsWithChildren) => (
-  <MemoryRouter initialEntries={['/?q=phone&page=2&categories=auto&categories=electronics']}>{children}</MemoryRouter>
-);
+function wrapper({ children }: PropsWithChildren) {
+  return <MemoryRouter initialEntries={['/?q=phone&page=2&categories=auto&categories=electronics']}>{children}</MemoryRouter>;
+}
 
 describe('useUrlSearchState', () => {
   it('reads initial state from URLSearchParams', () => {

@@ -7,15 +7,17 @@ import { useAsyncPopoverRequest } from './useAsyncPopoverRequest';
 
 import { act, renderHook, waitFor } from '@testing-library/react';
 
-const createWrapper = () => {
+function createWrapper() {
   const queryClient = new QueryClient({
     defaultOptions: {
       mutations: { retry: false },
     },
   });
 
-  return ({ children }: PropsWithChildren) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
-};
+  return function Wrapper({ children }: PropsWithChildren) {
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  };
+}
 
 describe('useAsyncPopoverRequest', () => {
   it('stores data and opens popover on success', async () => {

@@ -1,4 +1,4 @@
-export const extractErrorMessage = (error: unknown, fallbackMessage: string): string => {
+export function extractErrorMessage(error: unknown, fallbackMessage: string): string {
   if (
     typeof error === 'object' &&
     error !== null &&
@@ -19,4 +19,4 @@ export const extractErrorMessage = (error: unknown, fallbackMessage: string): st
   }
 
   return fallbackMessage;
-};
+}

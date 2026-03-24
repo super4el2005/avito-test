@@ -98,7 +98,7 @@ const componentNamingPlugin: any = {
 
 export default defineConfig([
   {
-    ignores: ['.react-router/**', 'build/**', 'coverage/**'],
+    ignores: ['.react-router/**', 'build/**', 'coverage/**', 'eslint.config.ts'],
   },
   {
     files: ['**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],

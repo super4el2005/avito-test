@@ -6,10 +6,10 @@ import { MdArrowBack, MdEdit, MdInfo } from 'react-icons/md';
 
 import { Link, useParams } from 'react-router';
 
-import { ITEM_CATEGORIES, type Item } from '@ads/shared';
+import { type Item,ITEM_CATEGORIES } from '@ads/shared';
 
 import { apiAds } from '~/api';
-import { ImagePlaceholder } from '~/components/ImagePlaceholder';
+import { ImagePlaceholder } from '~/components/image-placeholder';
 import { extractErrorMessage, translateByMap } from '~/lib';
 
 type ItemDetailsResponse = Item & {
@@ -72,7 +72,7 @@ const DATE_TIME_FORMATTER_RU = new Intl.DateTimeFormat('ru-RU', {
   minute: '2-digit',
 });
 
-const formatDateTimeRu = (value?: string): string => {
+function formatDateTimeRu(value?: string): string {
   if (!value) return '-';
 
   const date = new Date(value);
@@ -86,17 +86,17 @@ const formatDateTimeRu = (value?: string): string => {
 
   if (!day || !month || !hour || !minute) return '-';
   return `${day} ${month} ${hour}:${minute}`;
-};
+}
 
-const translateParamLabel = (key: string, category?: Item['category']): string => {
+function translateParamLabel(key: string, category?: Item['category']): string {
   if (key === 'type' && category) {
     return TYPE_LABEL_TRANSLATIONS_BY_CATEGORY[category] ?? PARAM_LABEL_TRANSLATIONS.type;
   }
 
   return translateByMap(key, PARAM_LABEL_TRANSLATIONS);
-};
+}
 
-const translateParamValue = (key: string, value: unknown, category?: Item['category']): string => {
+function translateParamValue(key: string, value: unknown, category?: Item['category']): string {
   const valueKey = String(value);
 
   if (key === 'type' && category) {
@@ -104,7 +104,7 @@ const translateParamValue = (key: string, value: unknown, category?: Item['categ
   }
 
   return translateByMap(valueKey, PARAM_VALUE_TRANSLATIONS);
-};
+}
 
 export default function () {
   const params = useParams();

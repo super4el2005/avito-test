@@ -5,9 +5,9 @@ type UseUiPreferenceConfig<TValue> = {
   defaultValue: TValue;
 };
 
-export const useUiPreference = <TValue>({ key, defaultValue }: UseUiPreferenceConfig<TValue>) => {
+export function useUiPreference<TValue>({ key, defaultValue }: UseUiPreferenceConfig<TValue>) {
   return useLocalStorage<TValue>({
     key,
     defaultValue,
   });
-};
+}

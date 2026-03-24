@@ -35,7 +35,7 @@ import { ITEM_CATEGORIES } from '@ads/shared';
 import type { Item } from '@ads/shared';
 
 import { aiChatAboutItem, type AiChatMessage, aiSuggestDescription, aiSuggestPrice, apiAds } from '~/api';
-import { useAsyncPopoverRequest, extractErrorMessage, parseSuggestedNumber } from '~/lib';
+import { extractErrorMessage, parseSuggestedNumber,useAsyncPopoverRequest } from '~/lib';
 import { queryClient } from '~/root';
 
 type Category = (typeof ITEM_CATEGORIES)[keyof typeof ITEM_CATEGORIES];
@@ -78,9 +78,9 @@ const CATEGORIES_TRANSLATE: Record<Category, string> = {
   [ITEM_CATEGORIES.ELECTRONICS]: 'Электроника',
 };
 
-const getAiErrorMessage = (_error: unknown): string => {
+function getAiErrorMessage(_error: unknown): string {
   return 'Произошла ошибка при запросе к AI\nПопробуйте повторить запрос или закройте уведомление';
-};
+}
 
 const AUTO_TRANSMISSION_OPTIONS = [
   { value: 'automatic', label: 'Автомат' },
@@ -497,14 +497,13 @@ type ChatContextRef = {
   description?: string;
 };
 
-const AiChatWidget = memo(function AiChatWidget({ itemContextRef }: { itemContextRef: React.MutableRefObject<ChatContextRef> }) {
+const AiChatWidget = memo(function AiChatWidget({ itemContext }: { itemContext: ChatContextRef }) {
   const [chatMessages, setChatMessages] = useState<AiChatMessage[]>([]);
   const [chatDraft, setChatDraft] = useState('');
   const [isChatWidgetOpen, setIsChatWidgetOpen] = useDisclosure(false);
 
   const chatMutation = useMutation({
     mutationFn: async (nextMessages: AiChatMessage[]) => {
-      const itemContext = itemContextRef.current;
       const res = await aiChatAboutItem(
         {
           itemContext: {
@@ -630,14 +629,15 @@ const AiChatWidget = memo(function AiChatWidget({ itemContextRef }: { itemContex
   );
 });
 
-const mapItemToEditValues = (item: ItemDetailsResponse): EditFormValues =>
-  ({
+function mapItemToEditValues(item: ItemDetailsResponse): EditFormValues {
+  return {
     category: item.category,
     title: item.title ?? '',
     price: item.price ?? null,
     description: item.description ?? '',
     params: (item.params ?? {}) as any,
-  }) as EditFormValues;
+  } as EditFormValues;
+}
 
 function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
   const navigate = useNavigate();
@@ -761,22 +761,17 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
 
   const aiSuggestedPrice = useMemo(() => parseSuggestedNumber(priceAiState.data ?? ''), [priceAiState.data]);
 
-  const chatContextRef = useRef<ChatContextRef>({
-    id,
-    title: '',
-    category: ITEM_CATEGORIES.ELECTRONICS,
-    params: {},
-    price: null,
-  });
-
-  chatContextRef.current = {
+  const chatContext = useMemo<ChatContextRef>(
+    () => ({
     id,
     title: form.values.title,
     category: form.values.category,
     params: form.values.params ?? {},
     price: form.values.price,
     description: form.values.description || undefined,
-  };
+    }),
+    [id, form.values.title, form.values.category, form.values.params, form.values.price, form.values.description],
+  );
 
   const requiredOk = Boolean(form.values.category) && Boolean(form.values.title.trim()) && form.values.price !== null;
 
@@ -1056,7 +1051,7 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
         </Stack>
       </Container>
 
-      <AiChatWidget itemContextRef={chatContextRef} />
+      <AiChatWidget itemContext={chatContext} />
     </>
   );
 }

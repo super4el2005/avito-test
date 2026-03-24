@@ -17,10 +17,10 @@ type UseAsyncPopoverRequestResult<TData> = {
   run: () => void;
 };
 
-export const useAsyncPopoverRequest = <TData>({
+export function useAsyncPopoverRequest<TData>({
   mutationFn,
   mapErrorToMessage,
-}: UseAsyncPopoverRequestConfig<TData>): UseAsyncPopoverRequestResult<TData> => {
+}: UseAsyncPopoverRequestConfig<TData>): UseAsyncPopoverRequestResult<TData> {
   const [isOpen, setIsOpen] = useState(false);
   const [data, setData] = useState<TData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -51,4 +51,4 @@ export const useAsyncPopoverRequest = <TData>({
     isPending: mutation.isPending,
     run: () => mutation.mutate(),
   };
-};
+}

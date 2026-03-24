@@ -4,7 +4,14 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "pnpm --filter \"./apps/*\" --parallel dev",
+    "dev": "pnpm --parallel run dev:apps dev:ollama",
+    "dev:apps": "pnpm --filter \"./apps/*\" --parallel dev",
+    "dev:ollama": "ollama serve",
+    "prod": "pnpm run prod:frontend:build && pnpm --parallel run prod:frontend:start prod:server prod:ollama",
+    "prod:frontend:build": "pnpm --filter frontend build",
+    "prod:frontend:start": "pnpm --filter frontend start",
+    "prod:server": "pnpm --filter server dev",
+    "prod:ollama": "ollama serve",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

@@ -16,11 +16,11 @@ type UseUrlSearchStateResult<TValues extends Record<string, unknown>> = {
   setValues: (values: TValues) => void;
 };
 
-export const useUrlSearchState = <TValues extends Record<string, unknown>>({
+export function useUrlSearchState<TValues extends Record<string, unknown>>({
   debounceMs = 0,
   fromSearchParams,
   toSearchParams,
-}: UseUrlSearchStateConfig<TValues>): UseUrlSearchStateResult<TValues> => {
+}: UseUrlSearchStateConfig<TValues>): UseUrlSearchStateResult<TValues> {
   const [searchParams, setSearchParams] = useSearchParams();
   const setSearchParamsDebounced = useDebouncedCallback(setSearchParams, debounceMs);
 
@@ -38,4 +38,4 @@ export const useUrlSearchState = <TValues extends Record<string, unknown>>({
       setSearchParams(queryObject);
     },
   };
-};
+}

@@ -1,5 +1,3 @@
-import { isRouteErrorResponse, Links, Meta, Outlet, Scripts, ScrollRestoration } from 'react-router';
-
 import {
   ActionIcon,
   ColorSchemeScript,
@@ -10,8 +8,12 @@ import {
   useMantineColorScheme,
 } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
+
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
 import { MdDarkMode, MdLightMode } from 'react-icons/md';
+
+import { isRouteErrorResponse, Links, Meta, Outlet, Scripts, ScrollRestoration } from 'react-router';
 
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';

@@ -1,4 +1,4 @@
-import { Box, Center, type BoxProps } from '@mantine/core';
+import { Box, type BoxProps,Center } from '@mantine/core';
 
 import { MdImage } from 'react-icons/md';
 

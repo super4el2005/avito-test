@@ -33,7 +33,7 @@ import { Link } from 'react-router';
 import { type Item, ITEM_CATEGORIES, type ItemSortColumn, type SortDirection } from '@ads/shared';
 
 import { apiAds } from '~/api';
-import { ImagePlaceholder } from '~/components/ImagePlaceholder';
+import { ImagePlaceholder } from '~/components/image-placeholder';
 import { useUiPreference, useUrlSearchState } from '~/lib';
 
 type Category = (typeof ITEM_CATEGORIES)[keyof typeof ITEM_CATEGORIES];
@@ -100,7 +100,7 @@ type ResponseAds = {
 
 const LIMIT_ADS = 10;
 
-const getAdsPlural = (n: number) => {
+function getAdsPlural(n: number) {
   const forms = ['объявление', 'объявления', 'объявлений'];
   const num = Math.abs(n) % 100;
   const n1 = num % 10;
@@ -108,7 +108,7 @@ const getAdsPlural = (n: number) => {
   if (n1 > 1 && n1 < 5) return forms[1];
   if (n1 === 1) return forms[0];
   return forms[2];
-};
+}
 
 type AdCardProps = {
   ad: AdResponse;
