@@ -1,5 +1,3 @@
-import { Link, useSearchParams } from 'react-router';
-
 import {
   Accordion,
   ActionIcon,
@@ -24,13 +22,17 @@ import {
   Title,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { useDebouncedCallback, useLocalStorage } from '@mantine/hooks';
+
 import { useQuery } from '@tanstack/react-query';
+
 import { MdFormatListBulleted, MdGridView, MdInfo, MdOutlineClear, MdSearch } from 'react-icons/md';
+
+import { Link } from 'react-router';
 
 import { type Item, ITEM_CATEGORIES, type ItemSortColumn, type SortDirection } from '@ads/shared';
 
 import { apiAds } from '~/api';
+import { useUiPreference , useUrlSearchState} from '~/lib';
 
 type Category = (typeof ITEM_CATEGORIES)[keyof typeof ITEM_CATEGORIES];
 const CATEGORIES_TRANSLATE = {
@@ -97,10 +99,23 @@ const getAdsPlural = (n: number) => {
 };
 
 export default function () {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const setSearchParamsDebounced = useDebouncedCallback(setSearchParams, 500);
+  const { values: searchState, searchParams, setValues: setSearchState } = useUrlSearchState({
+    debounceMs: 500,
+    fromSearchParams: (params) => ({
+      q: params.get('q') || '',
+      categories: params.getAll('categories') || [],
+      page: Number(params.get('page')) || 1,
+      sort: params.get('sort') || 'createdAt:asc',
+      needsRevision: params.get('needsRevision') === 'true',
+    }),
+    toSearchParams: (values) => ({
+      ...values,
+      needsRevision: String(values.needsRevision),
+      page: String(values.page),
+    }),
+  });
 
-  const [viewMode, setViewMode] = useLocalStorage<'grid' | 'list'>({
+  const [viewMode, setViewMode] = useUiPreference<'grid' | 'list'>({
     key: 'view-mode',
     defaultValue: 'grid',
   });
@@ -124,19 +139,9 @@ export default function () {
   });
 
   const form = useForm({
-    initialValues: {
-      q: searchParams.get('q') || '',
-      categories: searchParams.getAll('categories') || [],
-      page: Number(searchParams.get('page')) || 1,
-      sort: searchParams.get('sort') || 'createdAt:asc',
-      needsRevision: searchParams.get('needsRevision') === 'true',
-    },
+    initialValues: searchState,
     onValuesChange: (values) => {
-      setSearchParamsDebounced({
-        ...values,
-        needsRevision: String(values.needsRevision),
-        page: String(values.page),
-      });
+      setSearchState(values);
     },
   });
 

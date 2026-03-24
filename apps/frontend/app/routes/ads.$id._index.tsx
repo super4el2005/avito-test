@@ -1,5 +1,3 @@
-import { Link, useParams } from 'react-router';
-
 import {
   Alert,
   Button,
@@ -12,19 +10,24 @@ import {
   Text,
   Title,
 } from '@mantine/core';
+
 import { useQuery } from '@tanstack/react-query';
+
 import { MdArrowBack, MdEdit, MdInfo } from 'react-icons/md';
 
-import type { Item } from '@ads/shared';
+import { Link, useParams } from 'react-router';
+
+import { ITEM_CATEGORIES, type Item } from '@ads/shared';
 
 import { apiAds } from '~/api';
+import { extractErrorMessage, translateByMap } from '~/lib';
 
 type ItemDetailsResponse = Item & {
   needsRevision: boolean;
   missingParams: string[];
 };
 
-const PARAM_TRANSLATIONS: Record<string, string> = {
+const PARAM_LABEL_TRANSLATIONS: Record<string, string> = {
   // Характеристики для Auto
   brand: 'Марка',
   model: 'Модель',
@@ -33,52 +36,65 @@ const PARAM_TRANSLATIONS: Record<string, string> = {
   mileage: 'Пробег (км)',
   enginePower: 'Мощность двигателя (л.с.)',
 
-  // Значения для transmission
-  automatic: 'Автомат',
-  manual: 'Механика',
-
-  // Характеристики для RealEstate
-  type: 'Тип недвижимости',
+  // Общий label для type (будет переопределен по категории)
+  type: 'Тип',
   address: 'Адрес',
   area: 'Площадь (м²)',
   floor: 'Этаж',
 
-  // Значения для type (real estate)
-  flat: 'Квартира',
-  house: 'Дом',
-  room: 'Комната',
-
   // Характеристики для Electronics
   condition: 'Состояние',
   color: 'Цвет',
+};
 
-  // Значения для type (electronics)
-  phone: 'Телефон',
-  laptop: 'Ноутбук',
-  misc: 'Разное',
+const PARAM_VALUE_TRANSLATIONS: Record<string, string> = {
+  // Значения для transmission
+  automatic: 'Автомат',
+  manual: 'Механика',
 
   // Значения для condition
   new: 'Новый',
   used: 'Б/У',
 };
 
-const getBackendErrorMessage = (error: unknown): string => {
-  if (
-    typeof error === 'object' &&
-    error !== null &&
-    'response' in error &&
-    typeof error.response === 'object' &&
-    error.response !== null &&
-    'data' in error.response &&
-    typeof error.response.data === 'object' &&
-    error.response.data !== null &&
-    'error' in error.response.data &&
-    typeof error.response.data.error === 'string'
-  ) {
-    return error.response.data.error;
+const TYPE_VALUE_TRANSLATIONS_BY_CATEGORY: Record<string, Record<string, string>> = {
+  [ITEM_CATEGORIES.REAL_ESTATE]: {
+    flat: 'Квартира',
+    house: 'Дом',
+    room: 'Комната',
+  },
+  [ITEM_CATEGORIES.ELECTRONICS]: {
+  phone: 'Телефон',
+  laptop: 'Ноутбук',
+  misc: 'Разное',
+  },
+};
+
+const TYPE_LABEL_TRANSLATIONS_BY_CATEGORY: Record<string, string> = {
+  [ITEM_CATEGORIES.REAL_ESTATE]: 'Тип недвижимости',
+  [ITEM_CATEGORIES.ELECTRONICS]: 'Тип',
+};
+
+const translateParamLabel = (key: string, category?: Item['category']): string => {
+  if (key === 'type' && category) {
+    return TYPE_LABEL_TRANSLATIONS_BY_CATEGORY[category] ?? PARAM_LABEL_TRANSLATIONS.type;
   }
 
-  return 'Не удалось загрузить объявление';
+  return translateByMap(key, PARAM_LABEL_TRANSLATIONS);
+};
+
+const translateParamValue = (
+  key: string,
+  value: unknown,
+  category?: Item['category'],
+): string => {
+  const valueKey = String(value);
+
+  if (key === 'type' && category) {
+    return translateByMap(valueKey, TYPE_VALUE_TRANSLATIONS_BY_CATEGORY[category] ?? {});
+  }
+
+  return translateByMap(valueKey, PARAM_VALUE_TRANSLATIONS);
 };
 
 export default function () {
@@ -91,7 +107,7 @@ export default function () {
       }),
   });
   if (getAdQuery.isError) {
-    const errorMessage = getBackendErrorMessage(getAdQuery.error);
+    const errorMessage = extractErrorMessage(getAdQuery.error, 'Не удалось загрузить объявление');
 
     return (
       <Container>
@@ -200,7 +216,9 @@ export default function () {
                   <List withPadding listStyleType="disc">
                     {getAdQuery.data?.data.missingParams.length ? (
                       getAdQuery.data?.data.missingParams.map((param) => (
-                        <List.Item key={param}>{PARAM_TRANSLATIONS[param] ?? param}</List.Item>
+                        <List.Item key={param}>
+                          {translateParamLabel(param, getAdQuery.data?.data.category)}
+                        </List.Item>
                       ))
                     ) : (
                       <List.Item>Не заполнено описание</List.Item>
@@ -215,13 +233,13 @@ export default function () {
           {Object.keys(getAdQuery.data?.data.params ?? {}).length > 0 ? (
             <Stack gap={1}>
               {Object.entries(getAdQuery.data?.data.params ?? {})
-                .filter(([key]) => PARAM_TRANSLATIONS[key])
+                .filter(([key]) => PARAM_LABEL_TRANSLATIONS[key])
                 .map(([key, value]) => (
                   <Group key={key}>
                     <Text fw={500} w={200}>
-                      {PARAM_TRANSLATIONS[key] || key}
+                      {translateParamLabel(key, getAdQuery.data?.data.category)}
                     </Text>
-                    <Text>{PARAM_TRANSLATIONS[value] || value}</Text>
+                    <Text>{translateParamValue(key, value, getAdQuery.data?.data.category)}</Text>
                   </Group>
                 ))}
             </Stack>

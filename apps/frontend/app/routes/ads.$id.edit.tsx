@@ -41,6 +41,7 @@ import {
   aiSuggestPrice,
   apiAds,
 } from '~/api';
+import { useAsyncPopoverRequest, extractErrorMessage, parseSuggestedNumber } from '~/lib';
 import { queryClient } from '~/root';
 
 type Category = (typeof ITEM_CATEGORIES)[keyof typeof ITEM_CATEGORIES];
@@ -51,26 +52,26 @@ type ParamsElectronics = NonNullable<Extract<Item, { category: 'electronics' }>[
 
 type EditFormValues =
   | {
-      category: 'auto';
-      title: string;
-      price: number | null;
-      description: string;
-      params: Partial<ParamsAuto>;
-    }
+    category: 'auto';
+    title: string;
+    price: number | null;
+    description: string;
+    params: Partial<ParamsAuto>;
+  }
   | {
-      category: 'real_estate';
-      title: string;
-      price: number | null;
-      description: string;
-      params: Partial<ParamsRealEstate>;
-    }
+    category: 'real_estate';
+    title: string;
+    price: number | null;
+    description: string;
+    params: Partial<ParamsRealEstate>;
+  }
   | {
-      category: 'electronics';
-      title: string;
-      price: number | null;
-      description: string;
-      params: Partial<ParamsElectronics>;
-    };
+    category: 'electronics';
+    title: string;
+    price: number | null;
+    description: string;
+    params: Partial<ParamsElectronics>;
+  };
 
 type ItemDetailsResponse = Item & {
   needsRevision: boolean;
@@ -83,54 +84,8 @@ const CATEGORIES_TRANSLATE: Record<Category, string> = {
   [ITEM_CATEGORIES.ELECTRONICS]: 'Электроника',
 };
 
-const getBackendErrorMessage = (error: unknown): string => {
-  if (
-    typeof error === 'object' &&
-    error !== null &&
-    'response' in error &&
-    typeof error.response === 'object' &&
-    error.response !== null &&
-    'data' in error.response &&
-    typeof error.response.data === 'object' &&
-    error.response.data !== null &&
-    'error' in error.response.data
-  ) {
-    if (typeof error.response.data.error === 'string') return error.response.data.error;
-    try {
-      return JSON.stringify(error.response.data.error);
-    } catch {
-      // ignore
-    }
-  }
-
-  return 'При попытке сохранить изменения произошла ошибка. Попробуйте ещё раз или зайдите позже.';
-};
-
 const getAiErrorMessage = (_error: unknown): string => {
   return 'Произошла ошибка при запросе к AI\nПопробуйте повторить запрос или закройте уведомление';
-};
-
-const parsePriceFromAiText = (text: string): number | null => {
-  const normalized = text.replace(/\u00A0/g, ' ');
-
-  const rangeMatch = normalized.match(
-    /(\d[\d\s]{1,9})\s*(?:-|–|—)\s*(\d[\d\s]{1,9})\s*(?:₽|р\.?|руб\.?)?/i,
-  );
-  if (rangeMatch) {
-    const a = Number(rangeMatch[1].replace(/\s/g, ''));
-    const b = Number(rangeMatch[2].replace(/\s/g, ''));
-    if (Number.isFinite(a) && Number.isFinite(b) && a > 0 && b > 0) {
-      return Math.round((a + b) / 2);
-    }
-  }
-
-  const firstNumber = normalized.match(/(\d[\d\s]{2,9})\s*(?:₽|р\.?|руб\.?)?/i);
-  if (firstNumber) {
-    const n = Number(firstNumber[1].replace(/\s/g, ''));
-    if (Number.isFinite(n) && n > 0) return n;
-  }
-
-  return null;
 };
 
 const DiffText = ({ before, after }: { before: string; after: string }) => {
@@ -292,18 +247,16 @@ export default function AdsEditRoute() {
       notifications.show({
         position: 'top-right',
         title: 'Ошибка сохранения',
-        message: getBackendErrorMessage(error),
+        message: extractErrorMessage(
+          error,
+          'При попытке сохранить изменения произошла ошибка. Попробуйте ещё раз или зайдите позже.',
+        ),
         color: 'red',
       });
     },
   });
 
-  const [isPriceAiPopoverOpen, setIsPriceAiPopoverOpen] = useState(false);
-  const [priceAiText, setPriceAiText] = useState<string | null>(null);
-  const [priceAiError, setPriceAiError] = useState<string | null>(null);
-  const [hasPriceAiEverRun, setHasPriceAiEverRun] = useState(false);
-
-  const priceAiMutation = useMutation({
+  const priceAiState = useAsyncPopoverRequest<string>({
     mutationFn: async () => {
       const res = await aiSuggestPrice({
         title: form.values.title,
@@ -313,27 +266,12 @@ export default function AdsEditRoute() {
       });
       return res.text;
     },
-    onSuccess: (text) => {
-      setHasPriceAiEverRun(true);
-      setPriceAiError(null);
-      setPriceAiText(text);
-      setIsPriceAiPopoverOpen(true);
-    },
-    onError: (error) => {
-      setHasPriceAiEverRun(true);
-      setPriceAiText(null);
-      setPriceAiError(getAiErrorMessage(error));
-      setIsPriceAiPopoverOpen(true);
-    },
+    mapErrorToMessage: getAiErrorMessage,
   });
 
-  const [isDescriptionAiPopoverOpen, setIsDescriptionAiPopoverOpen] = useState(false);
-  const [descriptionAiText, setDescriptionAiText] = useState<string | null>(null);
-  const [descriptionAiError, setDescriptionAiError] = useState<string | null>(null);
-  const [hasDescriptionAiEverRun, setHasDescriptionAiEverRun] = useState(false);
   const [descriptionAiBeforeText, setDescriptionAiBeforeText] = useState<string>('');
 
-  const descriptionAiMutation = useMutation({
+  const descriptionAiState = useAsyncPopoverRequest<string>({
     mutationFn: async () => {
       setDescriptionAiBeforeText(form.values.description);
       const res = await aiSuggestDescription({
@@ -344,18 +282,7 @@ export default function AdsEditRoute() {
       });
       return res.text;
     },
-    onSuccess: (text) => {
-      setHasDescriptionAiEverRun(true);
-      setDescriptionAiError(null);
-      setDescriptionAiText(text);
-      setIsDescriptionAiPopoverOpen(true);
-    },
-    onError: (error) => {
-      setHasDescriptionAiEverRun(true);
-      setDescriptionAiText(null);
-      setDescriptionAiError(getAiErrorMessage(error));
-      setIsDescriptionAiPopoverOpen(true);
-    },
+    mapErrorToMessage: getAiErrorMessage,
   });
 
   const [chatMessages, setChatMessages] = useState<AiChatMessage[]>([]);
@@ -512,8 +439,8 @@ export default function AdsEditRoute() {
                   position="bottom-start"
                   withArrow
                   shadow="md"
-                  opened={isPriceAiPopoverOpen}
-                  onChange={setIsPriceAiPopoverOpen}
+                  opened={priceAiState.isOpen}
+                  onChange={priceAiState.setIsOpen}
                   closeOnClickOutside={false}
                   closeOnEscape={false}
                 >
@@ -521,30 +448,30 @@ export default function AdsEditRoute() {
                     <Button
                       variant="light"
                       leftSection={<MdLightbulbOutline size={20} />}
-                      loading={priceAiMutation.isPending}
-                      onClick={() => priceAiMutation.mutate()}
+                      loading={priceAiState.isPending}
+                      onClick={priceAiState.run}
                     >
-                      {priceAiMutation.isPending
+                      {priceAiState.isPending
                         ? 'Выполняется запрос'
-                        : hasPriceAiEverRun
+                        : priceAiState.hasEverRun
                           ? 'Повторить запрос'
                           : 'Узнать рыночную цену'}
                     </Button>
                   </Popover.Target>
                   <Popover.Dropdown>
                     <Stack gap="sm" w={420}>
-                      {priceAiError ? (
+                      {priceAiState.error ? (
                         <>
                           <Title order={5} c="red">
                             Произошла ошибка при запросе к AI
                           </Title>
                           <Text c="dimmed" style={{ whiteSpace: 'pre-wrap' }}>
-                            {priceAiError}
+                            {priceAiState.error}
                           </Text>
                           <Group justify="flex-start">
                             <Button
                               variant="default"
-                              onClick={() => setIsPriceAiPopoverOpen(false)}
+                              onClick={() => priceAiState.setIsOpen(false)}
                             >
                               Закрыть
                             </Button>
@@ -553,21 +480,21 @@ export default function AdsEditRoute() {
                       ) : (
                         <>
                           <Title order={5}>Ответ AI:</Title>
-                          <Text style={{ whiteSpace: 'pre-wrap' }}>{priceAiText ?? ''}</Text>
+                          <Text style={{ whiteSpace: 'pre-wrap' }}>{priceAiState.data ?? ''}</Text>
                           <Group justify="flex-start">
                             <Button
                               onClick={() => {
-                                const n = parsePriceFromAiText(priceAiText ?? '');
+                                const n = parseSuggestedNumber(priceAiState.data ?? '');
                                 if (n !== null) form.setFieldValue('price', n);
-                                setIsPriceAiPopoverOpen(false);
+                                priceAiState.setIsOpen(false);
                               }}
-                              disabled={parsePriceFromAiText(priceAiText ?? '') === null}
+                              disabled={parseSuggestedNumber(priceAiState.data ?? '') === null}
                             >
                               Применить
                             </Button>
                             <Button
                               variant="default"
-                              onClick={() => setIsPriceAiPopoverOpen(false)}
+                              onClick={() => priceAiState.setIsOpen(false)}
                             >
                               Закрыть
                             </Button>
@@ -957,8 +884,8 @@ export default function AdsEditRoute() {
               position="bottom-start"
               withArrow
               shadow="md"
-              opened={isDescriptionAiPopoverOpen}
-              onChange={setIsDescriptionAiPopoverOpen}
+              opened={descriptionAiState.isOpen}
+              onChange={descriptionAiState.setIsOpen}
               closeOnClickOutside={false}
               closeOnEscape={false}
             >
@@ -967,12 +894,12 @@ export default function AdsEditRoute() {
                   w="min-content"
                   variant="light"
                   leftSection={<MdLightbulbOutline size={20} />}
-                  loading={descriptionAiMutation.isPending}
-                  onClick={() => descriptionAiMutation.mutate()}
+                  loading={descriptionAiState.isPending}
+                  onClick={descriptionAiState.run}
                 >
-                  {descriptionAiMutation.isPending
+                  {descriptionAiState.isPending
                     ? 'Выполняется запрос'
-                    : hasDescriptionAiEverRun
+                    : descriptionAiState.hasEverRun
                       ? 'Повторить запрос'
                       : form.values.description.trim()
                         ? 'Улучшить описание'
@@ -982,18 +909,18 @@ export default function AdsEditRoute() {
 
               <Popover.Dropdown>
                 <Stack gap="sm" w={420}>
-                  {descriptionAiError ? (
+                  {descriptionAiState.error ? (
                     <>
                       <Title order={5} c="red">
                         Произошла ошибка при запросе к AI
                       </Title>
                       <Text c="dimmed" style={{ whiteSpace: 'pre-wrap' }}>
-                        {descriptionAiError}
+                        {descriptionAiState.error}
                       </Text>
                       <Group justify="flex-start">
                         <Button
                           variant="default"
-                          onClick={() => setIsDescriptionAiPopoverOpen(false)}
+                          onClick={() => descriptionAiState.setIsOpen(false)}
                         >
                           Закрыть
                         </Button>
@@ -1002,8 +929,8 @@ export default function AdsEditRoute() {
                   ) : (
                     <>
                       <Title order={5}>Ответ AI:</Title>
-                      <Text style={{ whiteSpace: 'pre-wrap' }}>{descriptionAiText ?? ''}</Text>
-                      {!!descriptionAiText && (
+                      <Text style={{ whiteSpace: 'pre-wrap' }}>{descriptionAiState.data ?? ''}</Text>
+                      {!!descriptionAiState.data && (
                         <>
                           <Divider />
                           <Group align="flex-start" grow>
@@ -1024,7 +951,7 @@ export default function AdsEditRoute() {
                               <Paper withBorder p="sm" radius="md">
                                 <DiffText
                                   before={descriptionAiBeforeText || ''}
-                                  after={descriptionAiText}
+                                  after={descriptionAiState.data}
                                 />
                               </Paper>
                             </Stack>
@@ -1034,16 +961,16 @@ export default function AdsEditRoute() {
                       <Group justify="flex-start">
                         <Button
                           onClick={() => {
-                            form.setFieldValue('description', descriptionAiText ?? '');
-                            setIsDescriptionAiPopoverOpen(false);
+                            form.setFieldValue('description', descriptionAiState.data ?? '');
+                            descriptionAiState.setIsOpen(false);
                           }}
-                          disabled={!descriptionAiText}
+                          disabled={!descriptionAiState.data}
                         >
                           Применить
                         </Button>
                         <Button
                           variant="default"
-                          onClick={() => setIsDescriptionAiPopoverOpen(false)}
+                          onClick={() => descriptionAiState.setIsOpen(false)}
                         >
                           Закрыть
                         </Button>
