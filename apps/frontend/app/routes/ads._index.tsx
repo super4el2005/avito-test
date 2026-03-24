@@ -105,9 +105,10 @@ const getAdsPlural = (n: number) => {
 
 type AdCardProps = {
   ad: AdResponse;
+  prioritizeImage?: boolean;
 };
 
-const AdGridCard = memo(({ ad }: AdCardProps) => (
+const AdGridCard = memo(({ ad, prioritizeImage = false }: AdCardProps) => (
   <Card
     h={300}
     shadow="sm"
@@ -121,8 +122,10 @@ const AdGridCard = memo(({ ad }: AdCardProps) => (
       <Image
         src={DEFAULT_AD_IMAGE}
         height={150}
+        w="100%"
         alt={ad.title}
-        loading="lazy"
+        loading={prioritizeImage ? 'eager' : 'lazy'}
+        fetchPriority={prioritizeImage ? 'high' : 'auto'}
         decoding="async"
       />
     </Card.Section>
@@ -146,14 +149,15 @@ const AdGridCard = memo(({ ad }: AdCardProps) => (
 ));
 AdGridCard.displayName = 'AdGridCard';
 
-const AdListCard = memo(({ ad }: AdCardProps) => (
+const AdListCard = memo(({ ad, prioritizeImage = false }: AdCardProps) => (
   <Card h={140} shadow="sm" radius="md" p={0} withBorder component={Link} to={`/ads/${ad.id}`}>
     <Group align="flex-start">
       <img
         src={DEFAULT_AD_IMAGE}
         width={140}
         height={140}
-        loading="lazy"
+        loading={prioritizeImage ? 'eager' : 'lazy'}
+        fetchPriority={prioritizeImage ? 'high' : 'auto'}
         decoding="async"
         alt={ad.title}
         style={{ display: 'block', objectFit: 'cover' }}
@@ -363,7 +367,11 @@ export default function () {
             {getAdsQuery.isError && <Alert color="red" icon={<MdInfo />} title="Ошибка"></Alert>}
             {viewMode === 'grid' && (
               <SimpleGrid cols={5} h={650}>
-                {!isDataLoading && !!ads.length && ads.map((ad) => <AdGridCard key={ad.id} ad={ad} />)}
+                {!isDataLoading &&
+                  !!ads.length &&
+                  ads.map((ad, index) => (
+                    <AdGridCard key={ad.id} ad={ad} prioritizeImage={index === 0} />
+                  ))}
                 {isDataLoading &&
                   [...new Array(LIMIT_ADS)].map((_, id) => (
                     <Card key={id} h={320} shadow="sm" padding="lg" radius="md" withBorder>
@@ -380,7 +388,11 @@ export default function () {
             {viewMode === 'list' && (
               <ScrollArea h={650}>
                 <Stack>
-                  {!isDataLoading && !!ads.length && ads.map((ad) => <AdListCard key={ad.id} ad={ad} />)}
+                  {!isDataLoading &&
+                    !!ads.length &&
+                    ads.map((ad, index) => (
+                      <AdListCard key={ad.id} ad={ad} prioritizeImage={index === 0} />
+                    ))}
                   {isDataLoading &&
                     [...new Array(LIMIT_ADS)].map((_, id) => (
                       <Card key={id} h={140} shadow="sm" radius="md" p={0} withBorder>
