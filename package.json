@@ -4,14 +4,18 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "pnpm --parallel run dev:apps dev:ollama",
+    "dev": "pnpm run dev:gigachat",
+    "dev:ollama": "cross-env VITE_AI_PROVIDER=ollama concurrently \"pnpm run dev:apps\" \"pnpm run dev:llm:ollama\"",
+    "dev:gigachat": "cross-env VITE_AI_PROVIDER=gigachat pnpm run dev:apps",
     "dev:apps": "pnpm --filter \"./apps/*\" --parallel dev",
-    "dev:ollama": "ollama serve",
-    "prod": "pnpm run prod:frontend:build && pnpm --parallel run prod:frontend:start prod:server prod:ollama",
+    "dev:llm:ollama": "ollama serve",
+    "prod": "pnpm run prod:gigachat",
+    "prod:ollama": "cross-env VITE_AI_PROVIDER=ollama pnpm run prod:frontend:build && pnpm --parallel run prod:frontend:start prod:server prod:llm:ollama",
+    "prod:gigachat": "cross-env VITE_AI_PROVIDER=gigachat pnpm run prod:frontend:build && pnpm --parallel run prod:frontend:start prod:server",
     "prod:frontend:build": "pnpm --filter frontend build",
     "prod:frontend:start": "pnpm --filter frontend start",
     "prod:server": "pnpm --filter server dev",
-    "prod:ollama": "ollama serve",
+    "prod:llm:ollama": "ollama serve",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -20,5 +24,9 @@
   "packageManager": "pnpm@10.32.1",
   "dependencies": {
     "@react-router/fs-routes": "^7.13.2"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0"
   }
 }

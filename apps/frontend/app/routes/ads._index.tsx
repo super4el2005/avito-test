@@ -2,7 +2,6 @@ import {
   Accordion,
   ActionIcon,
   Alert,
-  Badge,
   Button,
   Card,
   Checkbox,
@@ -24,148 +23,18 @@ import { useForm } from '@mantine/form';
 
 import { useQuery } from '@tanstack/react-query';
 
-import { memo, useDeferredValue, useMemo, useTransition } from 'react';
+import { useDeferredValue, useMemo, useTransition } from 'react';
 
 import { MdFormatListBulleted, MdGridView, MdInfo, MdOutlineClear, MdSearch } from 'react-icons/md';
 
-import { Link } from 'react-router';
-
 import {
   AdsListSearchStateSchema,
-  type Item,
-  ITEM_CATEGORIES,
   ItemsGetInQuerySchema,
-  type ItemSortColumn,
-  type SortDirection,
 } from '@ads/shared';
 
 import { apiAds } from '~/api';
-import { ImagePlaceholder } from '~/components/image-placeholder';
-import { useUiPreference, useUrlSearchState } from '~/lib';
-
-type Category = (typeof ITEM_CATEGORIES)[keyof typeof ITEM_CATEGORIES];
-const CATEGORIES_TRANSLATE = {
-  [ITEM_CATEGORIES.AUTO]: 'Автомобили',
-  [ITEM_CATEGORIES.REAL_ESTATE]: 'Недвижимость',
-  [ITEM_CATEGORIES.ELECTRONICS]: 'Электроника',
-};
-
-const CATEGORIES_FORM: {
-  value: Category;
-  label: (typeof CATEGORIES_TRANSLATE)[Category];
-}[] = [
-  {
-    value: ITEM_CATEGORIES.AUTO,
-    label: CATEGORIES_TRANSLATE[ITEM_CATEGORIES.AUTO],
-  },
-  {
-    value: ITEM_CATEGORIES.REAL_ESTATE,
-    label: CATEGORIES_TRANSLATE[ITEM_CATEGORIES.REAL_ESTATE],
-  },
-  {
-    value: ITEM_CATEGORIES.ELECTRONICS,
-    label: CATEGORIES_TRANSLATE[ITEM_CATEGORIES.ELECTRONICS],
-  },
-];
-
-type SortFormValue = `${ItemSortColumn}:${SortDirection}`;
-const SORT_FORM: {
-  value: SortFormValue;
-  label: string;
-}[] = [
-  {
-    value: 'createdAt:desc',
-    label: 'По новизне (сначала новые)',
-  },
-  {
-    value: 'createdAt:asc',
-    label: 'По новизне (сначала старые)',
-  },
-  {
-    value: 'price:asc',
-    label: 'По цене (сначала дешевле)',
-  },
-  {
-    value: 'price:desc',
-    label: 'По цене (сначала дороже)',
-  },
-  {
-    value: 'title:asc',
-    label: 'По названию (А → Я)',
-  },
-  {
-    value: 'title:desc',
-    label: 'По названию (Я → А)',
-  },
-];
-
-type AdResponse = Item & { needsRevision: boolean };
-type ResponseAds = {
-  total: number;
-  items: AdResponse[];
-};
-
-const LIMIT_ADS = 10;
-
-function getAdsPlural(n: number) {
-  const forms = ['объявление', 'объявления', 'объявлений'];
-  const num = Math.abs(n) % 100;
-  const n1 = num % 10;
-  if (num > 10 && num < 20) return forms[2];
-  if (n1 > 1 && n1 < 5) return forms[1];
-  if (n1 === 1) return forms[0];
-  return forms[2];
-}
-
-type AdCardProps = {
-  ad: AdResponse;
-};
-
-const AdGridCard = memo(({ ad }: AdCardProps) => (
-  <Card h={300} shadow="sm" padding="lg" radius="md" withBorder component={Link} to={`/ads/${ad.id}`}>
-    <Card.Section>
-      <ImagePlaceholder h={150} w="100%" />
-    </Card.Section>
-
-    <Badge radius="md" pos={'absolute'} top={'47%'}>
-      {CATEGORIES_TRANSLATE[ad.category]}
-    </Badge>
-    <Stack gap="xs" mt="md">
-      <Text fw={500} lineClamp={2} style={{ minHeight: '48px' }}>
-        {ad.title}
-      </Text>
-      <Text>{ad.price} ₽</Text>
-
-      {ad.needsRevision && (
-        <Badge variant="dot" color="orange" w="fit-content">
-          Требует доработок
-        </Badge>
-      )}
-    </Stack>
-  </Card>
-));
-AdGridCard.displayName = 'AdGridCard';
-
-const AdListCard = memo(({ ad }: AdCardProps) => (
-  <Card h={140} shadow="sm" radius="md" p={0} withBorder component={Link} to={`/ads/${ad.id}`}>
-    <Group align="flex-start">
-      <ImagePlaceholder w={140} h={140} style={{ display: 'block', flexShrink: 0 }} />
-
-      <Stack m={0} gap={8} pt={5}>
-        <Text>{CATEGORIES_TRANSLATE[ad.category]}</Text>
-        <Text>{ad.title}</Text>
-        <Text>{ad.price} ₽</Text>
-
-        {ad.needsRevision && (
-          <Badge variant="dot" color="orange" w="fit-content">
-            Требует доработок
-          </Badge>
-        )}
-      </Stack>
-    </Group>
-  </Card>
-));
-AdListCard.displayName = 'AdListCard';
+import { AdGridCard, AdListCard, type AdsResponse, CATEGORIES_FORM, LIMIT_ADS, SORT_FORM, getAdsPlural } from '~/domain';
+import { useUiPreference, useUrlSearchState } from '~/shared';
 
 export default function () {
   const searchStateUrl = useUrlSearchState({
@@ -211,7 +80,7 @@ export default function () {
         sortDirection,
       });
 
-      return apiAds.get<ResponseAds>('/items', {
+      return apiAds.get<AdsResponse>('/items', {
         params: {
           q: parsedQuery.q,
           categories: parsedQuery.categories?.join(','),

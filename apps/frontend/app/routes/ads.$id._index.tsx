@@ -6,105 +6,10 @@ import { MdArrowBack, MdEdit, MdInfo } from 'react-icons/md';
 
 import { Link, useParams } from 'react-router';
 
-import { type Item,ITEM_CATEGORIES } from '@ads/shared';
-
 import { apiAds } from '~/api';
-import { ImagePlaceholder } from '~/components/image-placeholder';
-import { extractErrorMessage, translateByMap } from '~/lib';
-
-type ItemDetailsResponse = Item & {
-  needsRevision: boolean;
-  missingParams: string[];
-};
-
-const PARAM_LABEL_TRANSLATIONS: Record<string, string> = {
-  // Характеристики для Auto
-  brand: 'Марка',
-  model: 'Модель',
-  yearOfManufacture: 'Год выпуска',
-  transmission: 'Коробка передач',
-  mileage: 'Пробег (км)',
-  enginePower: 'Мощность двигателя (л.с.)',
-
-  // Общий label для type (будет переопределен по категории)
-  type: 'Тип',
-  address: 'Адрес',
-  area: 'Площадь (м²)',
-  floor: 'Этаж',
-
-  // Характеристики для Electronics
-  condition: 'Состояние',
-  color: 'Цвет',
-};
-
-const PARAM_VALUE_TRANSLATIONS: Record<string, string> = {
-  // Значения для transmission
-  automatic: 'Автомат',
-  manual: 'Механика',
-
-  // Значения для condition
-  new: 'Новый',
-  used: 'Б/У',
-};
-
-const TYPE_VALUE_TRANSLATIONS_BY_CATEGORY: Record<string, Record<string, string>> = {
-  [ITEM_CATEGORIES.REAL_ESTATE]: {
-    flat: 'Квартира',
-    house: 'Дом',
-    room: 'Комната',
-  },
-  [ITEM_CATEGORIES.ELECTRONICS]: {
-    phone: 'Телефон',
-    laptop: 'Ноутбук',
-    misc: 'Разное',
-  },
-};
-
-const TYPE_LABEL_TRANSLATIONS_BY_CATEGORY: Record<string, string> = {
-  [ITEM_CATEGORIES.REAL_ESTATE]: 'Тип недвижимости',
-  [ITEM_CATEGORIES.ELECTRONICS]: 'Тип',
-};
-
-const DATE_TIME_FORMATTER_RU = new Intl.DateTimeFormat('ru-RU', {
-  day: 'numeric',
-  month: 'long',
-  hour: '2-digit',
-  minute: '2-digit',
-});
-
-function formatDateTimeRu(value?: string): string {
-  if (!value) return '-';
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '-';
-
-  const parts = DATE_TIME_FORMATTER_RU.formatToParts(date);
-  const day = parts.find((part) => part.type === 'day')?.value;
-  const month = parts.find((part) => part.type === 'month')?.value;
-  const hour = parts.find((part) => part.type === 'hour')?.value;
-  const minute = parts.find((part) => part.type === 'minute')?.value;
-
-  if (!day || !month || !hour || !minute) return '-';
-  return `${day} ${month} ${hour}:${minute}`;
-}
-
-function translateParamLabel(key: string, category?: Item['category']): string {
-  if (key === 'type' && category) {
-    return TYPE_LABEL_TRANSLATIONS_BY_CATEGORY[category] ?? PARAM_LABEL_TRANSLATIONS.type;
-  }
-
-  return translateByMap(key, PARAM_LABEL_TRANSLATIONS);
-}
-
-function translateParamValue(key: string, value: unknown, category?: Item['category']): string {
-  const valueKey = String(value);
-
-  if (key === 'type' && category) {
-    return translateByMap(valueKey, TYPE_VALUE_TRANSLATIONS_BY_CATEGORY[category] ?? {});
-  }
-
-  return translateByMap(valueKey, PARAM_VALUE_TRANSLATIONS);
-}
+import { type ItemDetailsResponse, formatDateTimeRu, isKnownParamLabel, translateParamLabel, translateParamValue } from '~/domain';
+import { ImagePlaceholder } from '~/shared/components/image-placeholder';
+import { extractErrorMessage } from '~/shared';
 
 export default function () {
   const params = useParams();
@@ -168,11 +73,25 @@ export default function () {
       </Container>
     );
   }
+  const ad = getAdQuery.data?.data;
+  const adParams = ad?.params ?? {};
+  const adCategory = ad?.category;
+  const hasParams = Object.keys(adParams).length > 0;
+
+  const translatedParams = Object.entries(adParams).filter(([key]) => {
+    if (key === 'type') return true;
+    return isKnownParamLabel(key);
+  });
+
+  const missingParamLabels = ad?.missingParams.length
+    ? ad.missingParams.map((param) => translateParamLabel(param, adCategory))
+    : ['Не заполнено описание'];
+
   return (
     <Container size={'xl'} pt={30}>
       <Group justify="space-between">
-        <Title order={3}>{getAdQuery.data?.data.title}</Title>
-        <Title order={3}>{getAdQuery.data?.data.price}</Title>
+        <Title order={3}>{ad?.title}</Title>
+        <Title order={3}>{ad?.price}</Title>
       </Group>
 
       <Group mt={12} justify="space-between">
@@ -185,8 +104,8 @@ export default function () {
           </Button>
         </Group>
         <Stack gap={4} align="flex-end">
-          <Text c="dimmed">Опубликовано: {formatDateTimeRu(getAdQuery.data?.data.createdAt)}</Text>
-          <Text c="dimmed">Отредактировано: {formatDateTimeRu(getAdQuery.data?.data.updatedAt)}</Text>
+          <Text c="dimmed">Опубликовано: {formatDateTimeRu(ad?.createdAt)}</Text>
+          <Text c="dimmed">Отредактировано: {formatDateTimeRu(ad?.updatedAt)}</Text>
         </Stack>
       </Group>
       <Divider my="md" />
@@ -201,19 +120,15 @@ export default function () {
           </Group>
         </Stack>
         <Stack w={500}>
-          {getAdQuery.data?.data.needsRevision && (
+          {ad?.needsRevision && (
             <Alert radius={'md'} color="yellow" icon={<MdInfo />} title={'Требуются доработки'}>
               <List listStyleType="none">
                 <List.Item>
                   У объявления не заполнены поля:
                   <List withPadding listStyleType="disc">
-                    {getAdQuery.data?.data.missingParams.length ? (
-                      getAdQuery.data?.data.missingParams.map((param) => (
-                        <List.Item key={param}>{translateParamLabel(param, getAdQuery.data?.data.category)}</List.Item>
-                      ))
-                    ) : (
-                      <List.Item>Не заполнено описание</List.Item>
-                    )}
+                    {missingParamLabels.map((label) => (
+                      <List.Item key={label}>{label}</List.Item>
+                    ))}
                   </List>
                 </List.Item>
               </List>
@@ -221,18 +136,16 @@ export default function () {
           )}
 
           <Title order={4}>Характеристики</Title>
-          {Object.keys(getAdQuery.data?.data.params ?? {}).length > 0 ? (
+          {hasParams ? (
             <Stack gap={1}>
-              {Object.entries(getAdQuery.data?.data.params ?? {})
-                .filter(([key]) => PARAM_LABEL_TRANSLATIONS[key])
-                .map(([key, value]) => (
-                  <Group key={key}>
-                    <Text fw={500} w={200}>
-                      {translateParamLabel(key, getAdQuery.data?.data.category)}
-                    </Text>
-                    <Text>{translateParamValue(key, value, getAdQuery.data?.data.category)}</Text>
-                  </Group>
-                ))}
+              {translatedParams.map(([key, value]) => (
+                <Group key={key}>
+                  <Text fw={500} w={200}>
+                    {translateParamLabel(key, adCategory)}
+                  </Text>
+                  <Text>{translateParamValue(key, value, adCategory)}</Text>
+                </Group>
+              ))}
             </Stack>
           ) : (
             <Text c="dimmed">Отсутствуют</Text>
@@ -242,7 +155,7 @@ export default function () {
       <Title order={3} my={10}>
         Описание
       </Title>
-      {getAdQuery.data?.data.description ? <Text w={480}>{getAdQuery.data?.data.description}</Text> : <Text c="dimmed">Отсутствует</Text>}
+      {ad?.description ? <Text w={480}>{ad.description}</Text> : <Text c="dimmed">Отсутствует</Text>}
     </Container>
   );
 }

@@ -1,17 +1,12 @@
 import {
-  ActionIcon,
   ColorSchemeScript,
   localStorageColorSchemeManager,
   mantineHtmlProps,
   MantineProvider,
-  Tooltip,
-  useMantineColorScheme,
 } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-
-import { MdDarkMode, MdLightMode } from 'react-icons/md';
 
 import { isRouteErrorResponse, Links, Meta, Outlet, Scripts, ScrollRestoration } from 'react-router';
 
@@ -19,6 +14,7 @@ import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
 
 import type { Route } from './+types/root';
+import { ThemeToggle } from './shared';
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -50,21 +46,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Scripts />
       </body>
     </html>
-  );
-}
-
-function ThemeToggle() {
-  const { colorScheme, toggleColorScheme } = useMantineColorScheme();
-  const isDark = colorScheme === 'dark';
-
-  return (
-    <div style={{ position: 'fixed', top: 12, right: 12, zIndex: 1000 }}>
-      <Tooltip label={isDark ? 'Светлая тема' : 'Тёмная тема'} withArrow position="left">
-        <ActionIcon size="lg" radius="md" variant="default" aria-label="Переключить тему" onClick={() => toggleColorScheme()}>
-          {isDark ? <MdLightMode /> : <MdDarkMode />}
-        </ActionIcon>
-      </Tooltip>
-    </div>
   );
 }
 

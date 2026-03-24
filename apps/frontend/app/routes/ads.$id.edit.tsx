@@ -1,5 +1,4 @@
 import {
-  ActionIcon,
   Alert,
   Button,
   Container,
@@ -7,8 +6,6 @@ import {
   Group,
   NumberInput,
   Paper,
-  Popover,
-  ScrollArea,
   Select,
   Stack,
   Text,
@@ -18,665 +15,45 @@ import {
   useMantineTheme,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 
 import { useMutation, useQuery } from '@tanstack/react-query';
 
-import { diffWordsWithSpace } from 'diff';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
-import { memo, useCallback, useMemo, useRef, useState } from 'react';
-
-import { MdChatBubbleOutline, MdInfo, MdLightbulbOutline, MdOutlineClear } from 'react-icons/md';
+import { MdInfo } from 'react-icons/md';
 
 import { Link, useNavigate, useParams } from 'react-router';
 
-import { ITEM_CATEGORIES,ItemUpdateInSchema } from '@ads/shared';
-import type { Item } from '@ads/shared';
+import { ITEM_CATEGORIES, ItemUpdateInSchema } from '@ads/shared';
 
-import { aiChatAboutItem, type AiChatMessage, aiSuggestDescription, aiSuggestPrice, apiAds } from '~/api';
-import { extractErrorMessage, parseSuggestedNumber, useAsyncPopoverRequest } from '~/lib';
+import { aiSuggestDescription, aiSuggestPrice, apiAds } from '~/api';
+import {
+  AI_REQUEST_ERROR_MESSAGE,
+  AiChatWidget,
+  AiPopoverActions,
+  AiPopoverError,
+  AiSuggestionPopover,
+  CATEGORIES_TRANSLATE,
+  CategoryParamsFields,
+  DiffText,
+  mapItemDetailsToEditFormValues,
+  type Category,
+  type ChatContextRef,
+  type ItemEditFormValues,
+  type ItemDetailsResponse,
+} from '~/domain';
 import { queryClient } from '~/root';
-
-type Category = (typeof ITEM_CATEGORIES)[keyof typeof ITEM_CATEGORIES];
-
-type ParamsAuto = NonNullable<Extract<Item, { category: 'auto' }>['params']>;
-type ParamsRealEstate = NonNullable<Extract<Item, { category: 'real_estate' }>['params']>;
-type ParamsElectronics = NonNullable<Extract<Item, { category: 'electronics' }>['params']>;
-
-type EditFormValues =
-  | {
-      category: 'auto';
-      title: string;
-      price: number | null;
-      description: string;
-      params: Partial<ParamsAuto>;
-    }
-  | {
-      category: 'real_estate';
-      title: string;
-      price: number | null;
-      description: string;
-      params: Partial<ParamsRealEstate>;
-    }
-  | {
-      category: 'electronics';
-      title: string;
-      price: number | null;
-      description: string;
-      params: Partial<ParamsElectronics>;
-    };
-
-type ItemDetailsResponse = Item & {
-  needsRevision: boolean;
-  missingParams: string[];
-};
-
-const CATEGORIES_TRANSLATE: Record<Category, string> = {
-  [ITEM_CATEGORIES.AUTO]: 'Автомобили',
-  [ITEM_CATEGORIES.REAL_ESTATE]: 'Недвижимость',
-  [ITEM_CATEGORIES.ELECTRONICS]: 'Электроника',
-};
-
-function getAiErrorMessage(_error: unknown): string {
-  return 'Произошла ошибка при запросе к AI\nПопробуйте повторить запрос или закройте уведомление';
-}
-
-const AUTO_TRANSMISSION_OPTIONS = [
-  { value: 'automatic', label: 'Автомат' },
-  { value: 'manual', label: 'Механика' },
-];
-
-const REAL_ESTATE_TYPE_OPTIONS = [
-  { value: 'flat', label: 'Квартира' },
-  { value: 'house', label: 'Дом' },
-  { value: 'room', label: 'Комната' },
-];
-
-const ELECTRONICS_TYPE_OPTIONS = [
-  { value: 'phone', label: 'Телефон' },
-  { value: 'laptop', label: 'Ноутбук' },
-  { value: 'misc', label: 'Разное' },
-];
-
-const ELECTRONICS_CONDITION_OPTIONS = [
-  { value: 'new', label: 'Новый' },
-  { value: 'used', label: 'Б/У' },
-];
-
-const DiffText = memo(({ before, after }: { before: string; after: string }) => {
-  const parts = useMemo(() => diffWordsWithSpace(before ?? '', after ?? ''), [before, after]);
-  return (
-    <Text style={{ whiteSpace: 'pre-wrap', lineHeight: 1.35 }}>
-      {parts.map((part, idx) => {
-        const bg = part.added ? 'rgba(64, 192, 87, 0.18)' : part.removed ? 'rgba(250, 82, 82, 0.16)' : undefined;
-        const decoration = part.removed ? 'line-through' : undefined;
-        return (
-          <Text
-            key={idx}
-            span
-            style={{
-              background: bg,
-              textDecoration: decoration,
-            }}
-          >
-            {part.value}
-          </Text>
-        );
-      })}
-    </Text>
-  );
-});
-
-type CategoryParamsProps = {
-  params: Record<string, unknown>;
-  setParams: (next: Record<string, unknown>) => void;
-  maybeWarnIfEmpty: (isRequired: boolean, value: unknown) => WarningInputStyles | undefined;
-};
-
-type WarningInputStyles = {
-  input: {
-    borderColor: string;
-  };
-};
-
-const AutoParamsFields = memo(function AutoParamsFields({ params, setParams, maybeWarnIfEmpty }: CategoryParamsProps) {
-  const autoParams = params as Partial<ParamsAuto>;
-
-  return (
-    <Stack gap="sm">
-      <Select
-        label="Коробка передач"
-        placeholder="Выберите"
-        clearable
-        data={AUTO_TRANSMISSION_OPTIONS}
-        value={autoParams.transmission ?? null}
-        onChange={(value) =>
-          setParams({
-            ...autoParams,
-            transmission: (value ?? undefined) as ParamsAuto['transmission'] | undefined,
-          })
-        }
-        styles={maybeWarnIfEmpty(false, autoParams.transmission)}
-      />
-
-      <TextInput
-        label="Марка"
-        placeholder="Марка"
-        value={autoParams.brand ?? ''}
-        onChange={(e) =>
-          setParams({
-            ...autoParams,
-            brand: e.currentTarget.value || undefined,
-          })
-        }
-        rightSection={
-          autoParams.brand ? (
-            <ActionIcon
-              variant="subtle"
-              color="gray"
-              aria-label="Очистить"
-              onClick={() =>
-                setParams({
-                  ...autoParams,
-                  brand: undefined,
-                })
-              }
-            >
-              <MdOutlineClear size={18} />
-            </ActionIcon>
-          ) : null
-        }
-        styles={maybeWarnIfEmpty(false, autoParams.brand)}
-      />
-
-      <TextInput
-        label="Модель"
-        placeholder="Модель"
-        value={autoParams.model ?? ''}
-        onChange={(e) =>
-          setParams({
-            ...autoParams,
-            model: e.currentTarget.value || undefined,
-          })
-        }
-        rightSection={
-          autoParams.model ? (
-            <ActionIcon
-              variant="subtle"
-              color="gray"
-              aria-label="Очистить"
-              onClick={() =>
-                setParams({
-                  ...autoParams,
-                  model: undefined,
-                })
-              }
-            >
-              <MdOutlineClear size={18} />
-            </ActionIcon>
-          ) : null
-        }
-        styles={maybeWarnIfEmpty(false, autoParams.model)}
-      />
-
-      <NumberInput
-        label="Год выпуска"
-        placeholder="Год"
-        hideControls
-        min={1900}
-        value={autoParams.yearOfManufacture ?? undefined}
-        onChange={(value) =>
-          setParams({
-            ...autoParams,
-            yearOfManufacture: typeof value === 'number' ? value : undefined,
-          })
-        }
-        styles={maybeWarnIfEmpty(false, autoParams.yearOfManufacture)}
-      />
-
-      <NumberInput
-        label="Пробег (км)"
-        placeholder="Пробег"
-        hideControls
-        min={0}
-        value={autoParams.mileage ?? undefined}
-        onChange={(value) =>
-          setParams({
-            ...autoParams,
-            mileage: typeof value === 'number' ? value : undefined,
-          })
-        }
-        styles={maybeWarnIfEmpty(false, autoParams.mileage)}
-      />
-
-      <NumberInput
-        label="Мощность двигателя (л.с.)"
-        placeholder="Мощность"
-        hideControls
-        min={0}
-        value={autoParams.enginePower ?? undefined}
-        onChange={(value) =>
-          setParams({
-            ...autoParams,
-            enginePower: typeof value === 'number' ? value : undefined,
-          })
-        }
-        styles={maybeWarnIfEmpty(false, autoParams.enginePower)}
-      />
-    </Stack>
-  );
-});
-
-const RealEstateParamsFields = memo(function RealEstateParamsFields({ params, setParams, maybeWarnIfEmpty }: CategoryParamsProps) {
-  const realEstateParams = params as Partial<ParamsRealEstate>;
-
-  return (
-    <Stack gap="sm">
-      <Select
-        label="Тип"
-        placeholder="Выберите"
-        clearable
-        data={REAL_ESTATE_TYPE_OPTIONS}
-        value={realEstateParams.type ?? null}
-        onChange={(value) =>
-          setParams({
-            ...realEstateParams,
-            type: (value ?? undefined) as ParamsRealEstate['type'] | undefined,
-          })
-        }
-        styles={maybeWarnIfEmpty(false, realEstateParams.type)}
-      />
-
-      <TextInput
-        label="Адрес"
-        placeholder="Адрес"
-        value={realEstateParams.address ?? ''}
-        onChange={(e) =>
-          setParams({
-            ...realEstateParams,
-            address: e.currentTarget.value || undefined,
-          })
-        }
-        rightSection={
-          realEstateParams.address ? (
-            <ActionIcon
-              variant="subtle"
-              color="gray"
-              aria-label="Очистить"
-              onClick={() =>
-                setParams({
-                  ...realEstateParams,
-                  address: undefined,
-                })
-              }
-            >
-              <MdOutlineClear size={18} />
-            </ActionIcon>
-          ) : null
-        }
-        styles={maybeWarnIfEmpty(false, realEstateParams.address)}
-      />
-
-      <NumberInput
-        label="Площадь (м²)"
-        placeholder="Площадь"
-        hideControls
-        min={0}
-        value={realEstateParams.area ?? undefined}
-        onChange={(value) =>
-          setParams({
-            ...realEstateParams,
-            area: typeof value === 'number' ? value : undefined,
-          })
-        }
-        styles={maybeWarnIfEmpty(false, realEstateParams.area)}
-      />
-
-      <NumberInput
-        label="Этаж"
-        placeholder="Этаж"
-        hideControls
-        min={0}
-        value={realEstateParams.floor ?? undefined}
-        onChange={(value) =>
-          setParams({
-            ...realEstateParams,
-            floor: typeof value === 'number' ? value : undefined,
-          })
-        }
-        styles={maybeWarnIfEmpty(false, realEstateParams.floor)}
-      />
-    </Stack>
-  );
-});
-
-const ElectronicsParamsFields = memo(function ElectronicsParamsFields({ params, setParams, maybeWarnIfEmpty }: CategoryParamsProps) {
-  const electronicsParams = params as Partial<ParamsElectronics>;
-
-  return (
-    <Stack gap="sm">
-      <Select
-        label="Тип"
-        placeholder="Выберите"
-        clearable
-        data={ELECTRONICS_TYPE_OPTIONS}
-        value={electronicsParams.type ?? null}
-        onChange={(value) =>
-          setParams({
-            ...electronicsParams,
-            type: (value ?? undefined) as ParamsElectronics['type'] | undefined,
-          })
-        }
-        styles={maybeWarnIfEmpty(false, electronicsParams.type)}
-      />
-
-      <TextInput
-        label="Бренд"
-        placeholder="Бренд"
-        value={electronicsParams.brand ?? ''}
-        onChange={(e) =>
-          setParams({
-            ...electronicsParams,
-            brand: e.currentTarget.value || undefined,
-          })
-        }
-        rightSection={
-          electronicsParams.brand ? (
-            <ActionIcon
-              variant="subtle"
-              color="gray"
-              aria-label="Очистить"
-              onClick={() =>
-                setParams({
-                  ...electronicsParams,
-                  brand: undefined,
-                })
-              }
-            >
-              <MdOutlineClear size={18} />
-            </ActionIcon>
-          ) : null
-        }
-        styles={maybeWarnIfEmpty(false, electronicsParams.brand)}
-      />
-
-      <TextInput
-        label="Модель"
-        placeholder="Модель"
-        value={electronicsParams.model ?? ''}
-        onChange={(e) =>
-          setParams({
-            ...electronicsParams,
-            model: e.currentTarget.value || undefined,
-          })
-        }
-        rightSection={
-          electronicsParams.model ? (
-            <ActionIcon
-              variant="subtle"
-              color="gray"
-              aria-label="Очистить"
-              onClick={() =>
-                setParams({
-                  ...electronicsParams,
-                  model: undefined,
-                })
-              }
-            >
-              <MdOutlineClear size={18} />
-            </ActionIcon>
-          ) : null
-        }
-        styles={maybeWarnIfEmpty(false, electronicsParams.model)}
-      />
-
-      <Select
-        label="Состояние"
-        placeholder="Выберите"
-        clearable
-        data={ELECTRONICS_CONDITION_OPTIONS}
-        value={electronicsParams.condition ?? null}
-        onChange={(value) =>
-          setParams({
-            ...electronicsParams,
-            condition: (value ?? undefined) as ParamsElectronics['condition'] | undefined,
-          })
-        }
-        styles={maybeWarnIfEmpty(false, electronicsParams.condition)}
-      />
-
-      <TextInput
-        label="Цвет"
-        placeholder="Цвет"
-        value={electronicsParams.color ?? ''}
-        onChange={(e) =>
-          setParams({
-            ...electronicsParams,
-            color: e.currentTarget.value || undefined,
-          })
-        }
-        rightSection={
-          electronicsParams.color ? (
-            <ActionIcon
-              variant="subtle"
-              color="gray"
-              aria-label="Очистить"
-              onClick={() =>
-                setParams({
-                  ...electronicsParams,
-                  color: undefined,
-                })
-              }
-            >
-              <MdOutlineClear size={18} />
-            </ActionIcon>
-          ) : null
-        }
-        styles={maybeWarnIfEmpty(false, electronicsParams.color)}
-      />
-    </Stack>
-  );
-});
-
-const CategoryParamsFields = memo(function CategoryParamsFields({
-  category,
-  params,
-  setParams,
-  maybeWarnIfEmpty,
-}: CategoryParamsProps & { category: Category }) {
-  if (category === ITEM_CATEGORIES.AUTO) {
-    return <AutoParamsFields params={params} setParams={setParams} maybeWarnIfEmpty={maybeWarnIfEmpty} />;
-  }
-  if (category === ITEM_CATEGORIES.REAL_ESTATE) {
-    return <RealEstateParamsFields params={params} setParams={setParams} maybeWarnIfEmpty={maybeWarnIfEmpty} />;
-  }
-  return <ElectronicsParamsFields params={params} setParams={setParams} maybeWarnIfEmpty={maybeWarnIfEmpty} />;
-});
-
-type ChatContextRef = {
-  id: string;
-  title: string;
-  category: Category;
-  params: unknown;
-  price: number | null;
-  description?: string;
-};
-
-const AiChatWidget = memo(function AiChatWidget({ itemContext }: { itemContext: ChatContextRef }) {
-  const [chatMessages, setChatMessages] = useState<AiChatMessage[]>([]);
-  const [chatDraft, setChatDraft] = useState('');
-  const [isChatWidgetOpen, setIsChatWidgetOpen] = useDisclosure(false);
-
-  const chatMutation = useMutation({
-    mutationFn: async (nextMessages: AiChatMessage[]) => {
-      const res = await aiChatAboutItem(
-        {
-          itemContext: {
-            id: itemContext.id,
-            title: itemContext.title,
-            category: itemContext.category,
-            params: itemContext.params as Record<string, unknown>,
-            price: itemContext.price,
-            description: itemContext.description,
-          },
-          messages: nextMessages,
-        },
-        undefined,
-      );
-      return res.text;
-    },
-    onSuccess: (text) => {
-      setChatMessages((prev) => [...prev, { role: 'assistant', content: text }]);
-    },
-    onError: () => {
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: 'Произошла ошибка при запросе к AI. Попробуйте повторить вопрос.',
-        },
-      ]);
-    },
-  });
-
-  return (
-    <Popover
-      position="top-end"
-      withArrow
-      shadow="md"
-      opened={isChatWidgetOpen}
-      onChange={(opened) => {
-        if (opened) {
-          setIsChatWidgetOpen.open();
-          return;
-        }
-        setIsChatWidgetOpen.close();
-      }}
-      closeOnClickOutside
-      closeOnEscape
-    >
-      <Popover.Target>
-        <ActionIcon
-          onClick={() => setIsChatWidgetOpen.open()}
-          variant="filled"
-          size={52}
-          radius={999}
-          aria-label="Открыть чат с AI"
-          style={{ position: 'fixed', right: 24, bottom: 24, zIndex: 3000 }}
-        >
-          <MdChatBubbleOutline size={22} />
-        </ActionIcon>
-      </Popover.Target>
-      {isChatWidgetOpen && (
-        <Popover.Dropdown>
-          <Stack gap="sm" w={420}>
-            <Group justify="space-between" align="center">
-              <Title order={5}>Чат с AI</Title>
-              <ActionIcon variant="subtle" color="gray" aria-label="Закрыть чат" onClick={() => setIsChatWidgetOpen.close()}>
-                <MdOutlineClear size={18} />
-              </ActionIcon>
-            </Group>
-            <Paper withBorder radius="md" p="sm">
-              <Stack gap="sm">
-                <ScrollArea h={260} offsetScrollbars>
-                  <Stack gap="xs">
-                    {chatMessages.length === 0 ? (
-                      <Text c="dimmed">Задайте уточняющий вопрос по этому объявлению — контекст передаётся автоматически.</Text>
-                    ) : (
-                      chatMessages.map((m, idx) => (
-                        <Group key={idx} justify={m.role === 'user' ? 'flex-end' : 'flex-start'}>
-                          <Paper
-                            withBorder
-                            radius="md"
-                            p="sm"
-                            style={{
-                              maxWidth: 320,
-                              background: m.role === 'user' ? 'rgba(34, 139, 230, 0.08)' : undefined,
-                            }}
-                          >
-                            <Text fw={600} size="xs" c="dimmed" mb={4}>
-                              {m.role === 'user' ? 'Вы' : 'AI'}
-                            </Text>
-                            <Text style={{ whiteSpace: 'pre-wrap' }}>{m.content}</Text>
-                          </Paper>
-                        </Group>
-                      ))
-                    )}
-                  </Stack>
-                </ScrollArea>
-
-                <Group align="flex-end" wrap="nowrap">
-                  <Textarea
-                    flex={1}
-                    placeholder="Ваш вопрос…"
-                    minRows={2}
-                    autosize
-                    value={chatDraft}
-                    onChange={(e) => setChatDraft(e.currentTarget.value)}
-                  />
-                  <Button
-                    loading={chatMutation.isPending}
-                    disabled={!chatDraft.trim()}
-                    onClick={() => {
-                      const userMessage: AiChatMessage = {
-                        role: 'user',
-                        content: chatDraft.trim(),
-                      };
-                      const next = [...chatMessages, userMessage];
-                      setChatMessages(next);
-                      setChatDraft('');
-                      chatMutation.mutate(next);
-                    }}
-                  >
-                    Отправить
-                  </Button>
-                </Group>
-              </Stack>
-            </Paper>
-          </Stack>
-        </Popover.Dropdown>
-      )}
-    </Popover>
-  );
-});
-
-function mapItemToEditValues(item: ItemDetailsResponse): EditFormValues {
-  if (item.category === ITEM_CATEGORIES.AUTO) {
-    return {
-      category: ITEM_CATEGORIES.AUTO,
-      title: item.title ?? '',
-      price: item.price ?? null,
-      description: item.description ?? '',
-      params: item.params ?? {},
-    };
-  }
-  if (item.category === ITEM_CATEGORIES.REAL_ESTATE) {
-    return {
-      category: ITEM_CATEGORIES.REAL_ESTATE,
-      title: item.title ?? '',
-      price: item.price ?? null,
-      description: item.description ?? '',
-      params: item.params ?? {},
-    };
-  }
-  return {
-    category: ITEM_CATEGORIES.ELECTRONICS,
-    title: item.title ?? '',
-    price: item.price ?? null,
-    description: item.description ?? '',
-    params: item.params ?? {},
-  };
-}
+import { ClearFieldAction, extractErrorMessage, parseSuggestedNumber, useAsyncPopoverRequest } from '~/shared';
 
 function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
   const navigate = useNavigate();
   const theme = useMantineTheme();
 
-  const form = useForm<EditFormValues>({
-    initialValues: mapItemToEditValues(item),
+  const form = useForm<ItemEditFormValues>({
+    initialValues: mapItemDetailsToEditFormValues(item),
     validateInputOnBlur: true,
-    validate: (values: EditFormValues) => ({
+    validate: (values: ItemEditFormValues) => ({
       category: !values.category ? 'Категория должна быть заполнена' : null,
       title: !values.title.trim() ? 'Название должно быть заполнено' : null,
       price: values.price === null ? 'Цена должна быть заполнена' : null,
@@ -710,7 +87,7 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
 
   const setCategoryParams = useCallback(
     (next: Record<string, unknown>) => {
-      form.setFieldValue('params', next as EditFormValues['params']);
+      form.setFieldValue('params', next as ItemEditFormValues['params']);
     },
     [form],
   );
@@ -725,7 +102,7 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
   );
 
   const updateAdMutation = useMutation({
-    mutationFn: async (values: EditFormValues) => {
+    mutationFn: async (values: ItemEditFormValues) => {
       if (values.price === null) {
         throw new Error('Цена должна быть заполнена');
       }
@@ -779,7 +156,11 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
       });
       return res.text;
     },
-    mapErrorToMessage: getAiErrorMessage,
+    mapErrorToMessage: (error) =>
+      extractErrorMessage(
+        error,
+        AI_REQUEST_ERROR_MESSAGE,
+      ),
   });
 
   const [descriptionAiBeforeText, setDescriptionAiBeforeText] = useState<string>('');
@@ -795,19 +176,23 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
       });
       return res.text;
     },
-    mapErrorToMessage: getAiErrorMessage,
+    mapErrorToMessage: (error) =>
+      extractErrorMessage(
+        error,
+        AI_REQUEST_ERROR_MESSAGE,
+      ),
   });
 
   const aiSuggestedPrice = useMemo(() => parseSuggestedNumber(priceAiState.data ?? ''), [priceAiState.data]);
 
   const chatContext = useMemo<ChatContextRef>(
     () => ({
-    id,
-    title: form.values.title,
-    category: form.values.category,
-    params: form.values.params ?? {},
-    price: form.values.price,
-    description: form.values.description || undefined,
+      id,
+      title: form.values.title,
+      category: form.values.category,
+      params: form.values.params ?? {},
+      price: form.values.price,
+      description: form.values.description || undefined,
     }),
     [id, form.values.title, form.values.category, form.values.params, form.values.price, form.values.description],
   );
@@ -838,8 +223,8 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
                 form.setValues({
                   ...form.values,
                   category: nextCategory,
-                  params: nextParams as EditFormValues['params'],
-                } as EditFormValues);
+                  params: nextParams as ItemEditFormValues['params'],
+                } as ItemEditFormValues);
 
                 form.setDirty({
                   category: true,
@@ -857,13 +242,7 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
                 withAsterisk
                 placeholder="Название"
                 {...form.getInputProps('title')}
-                rightSection={
-                  form.values.title ? (
-                    <ActionIcon variant="subtle" color="gray" aria-label="Очистить" onClick={() => form.setFieldValue('title', '')}>
-                      <MdOutlineClear size={18} />
-                    </ActionIcon>
-                  ) : null
-                }
+                rightSection={form.values.title ? <ClearFieldAction onClick={() => form.setFieldValue('title', '')} /> : null}
               />
 
               <Group align="flex-end">
@@ -879,70 +258,35 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
                   error={form.errors.price}
                   rightSection={
                     form.values.price !== null ? (
-                      <ActionIcon variant="subtle" color="gray" aria-label="Очистить" onClick={() => form.setFieldValue('price', null)}>
-                        <MdOutlineClear size={18} />
-                      </ActionIcon>
+                      <ClearFieldAction onClick={() => form.setFieldValue('price', null)} />
                     ) : null
                   }
                 />
-                <Popover
-                  position="bottom-start"
-                  withArrow
-                  shadow="md"
-                  opened={priceAiState.isOpen}
-                  onChange={priceAiState.setIsOpen}
-                  closeOnClickOutside={false}
-                  closeOnEscape={false}
+                <AiSuggestionPopover
+                  isOpen={priceAiState.isOpen}
+                  setIsOpen={priceAiState.setIsOpen}
+                  isPending={priceAiState.isPending}
+                  hasEverRun={priceAiState.hasEverRun}
+                  onRun={priceAiState.run}
+                  buttonLabel="Узнать рыночную цену"
                 >
-                  <Popover.Target>
-                    <Button
-                      variant="light"
-                      leftSection={<MdLightbulbOutline size={20} />}
-                      loading={priceAiState.isPending}
-                      onClick={priceAiState.run}
-                    >
-                      {priceAiState.isPending ? 'Выполняется запрос' : priceAiState.hasEverRun ? 'Повторить запрос' : 'Узнать рыночную цену'}
-                    </Button>
-                  </Popover.Target>
-                  <Popover.Dropdown>
-                    <Stack gap="sm" w={420}>
-                      {priceAiState.error ? (
-                        <>
-                          <Title order={5} c="red">
-                            Произошла ошибка при запросе к AI
-                          </Title>
-                          <Text c="dimmed" style={{ whiteSpace: 'pre-wrap' }}>
-                            {priceAiState.error}
-                          </Text>
-                          <Group justify="flex-start">
-                            <Button variant="default" onClick={() => priceAiState.setIsOpen(false)}>
-                              Закрыть
-                            </Button>
-                          </Group>
-                        </>
-                      ) : (
-                        <>
-                          <Title order={5}>Ответ AI:</Title>
-                          <Text style={{ whiteSpace: 'pre-wrap' }}>{priceAiState.data ?? ''}</Text>
-                          <Group justify="flex-start">
-                            <Button
-                              onClick={() => {
-                                if (aiSuggestedPrice !== null) form.setFieldValue('price', aiSuggestedPrice);
-                                priceAiState.setIsOpen(false);
-                              }}
-                              disabled={aiSuggestedPrice === null}
-                            >
-                              Применить
-                            </Button>
-                            <Button variant="default" onClick={() => priceAiState.setIsOpen(false)}>
-                              Закрыть
-                            </Button>
-                          </Group>
-                        </>
-                      )}
-                    </Stack>
-                  </Popover.Dropdown>
-                </Popover>
+                  {priceAiState.error ? (
+                    <AiPopoverError message={priceAiState.error} onClose={() => priceAiState.setIsOpen(false)} />
+                  ) : (
+                    <>
+                      <Title order={5}>Ответ AI:</Title>
+                      <Text style={{ whiteSpace: 'pre-wrap' }}>{priceAiState.data ?? ''}</Text>
+                      <AiPopoverActions
+                        onApply={() => {
+                          if (aiSuggestedPrice !== null) form.setFieldValue('price', aiSuggestedPrice);
+                          priceAiState.setIsOpen(false);
+                        }}
+                        onClose={() => priceAiState.setIsOpen(false)}
+                        isApplyDisabled={aiSuggestedPrice === null}
+                      />
+                    </>
+                  )}
+                </AiSuggestionPopover>
               </Group>
             </Container>
           </Stack>
@@ -973,102 +317,60 @@ function AdsEditForm({ id, item }: { id: string; item: ItemDetailsResponse }) {
               onChange={(e) => form.setFieldValue('description', e.currentTarget.value)}
               rightSection={
                 form.values.description ? (
-                  <ActionIcon variant="subtle" color="gray" aria-label="Очистить" onClick={() => form.setFieldValue('description', '')}>
-                    <MdOutlineClear size={18} />
-                  </ActionIcon>
+                  <ClearFieldAction onClick={() => form.setFieldValue('description', '')} />
                 ) : null
               }
               styles={maybeWarnIfEmpty(false, form.values.description)}
             />
-            <Popover
-              position="bottom-start"
-              withArrow
-              shadow="md"
-              opened={descriptionAiState.isOpen}
-              onChange={descriptionAiState.setIsOpen}
-              closeOnClickOutside={false}
-              closeOnEscape={false}
+            <AiSuggestionPopover
+              isOpen={descriptionAiState.isOpen}
+              setIsOpen={descriptionAiState.setIsOpen}
+              isPending={descriptionAiState.isPending}
+              hasEverRun={descriptionAiState.hasEverRun}
+              onRun={descriptionAiState.run}
+              buttonWidth="min-content"
+              buttonLabel={form.values.description.trim() ? 'Улучшить описание' : 'Придумать описание'}
             >
-              <Popover.Target>
-                <Button
-                  w="min-content"
-                  variant="light"
-                  leftSection={<MdLightbulbOutline size={20} />}
-                  loading={descriptionAiState.isPending}
-                  onClick={descriptionAiState.run}
-                >
-                  {descriptionAiState.isPending
-                    ? 'Выполняется запрос'
-                    : descriptionAiState.hasEverRun
-                      ? 'Повторить запрос'
-                      : form.values.description.trim()
-                        ? 'Улучшить описание'
-                        : 'Придумать описание'}
-                </Button>
-              </Popover.Target>
-
-              <Popover.Dropdown>
-                <Stack gap="sm" w={420}>
-                  {descriptionAiState.error ? (
+              {descriptionAiState.error ? (
+                <AiPopoverError message={descriptionAiState.error} onClose={() => descriptionAiState.setIsOpen(false)} />
+              ) : (
+                <>
+                  <Title order={5}>Ответ AI:</Title>
+                  <Text style={{ whiteSpace: 'pre-wrap' }}>{descriptionAiState.data ?? ''}</Text>
+                  {!!descriptionAiState.data && (
                     <>
-                      <Title order={5} c="red">
-                        Произошла ошибка при запросе к AI
-                      </Title>
-                      <Text c="dimmed" style={{ whiteSpace: 'pre-wrap' }}>
-                        {descriptionAiState.error}
-                      </Text>
-                      <Group justify="flex-start">
-                        <Button variant="default" onClick={() => descriptionAiState.setIsOpen(false)}>
-                          Закрыть
-                        </Button>
-                      </Group>
-                    </>
-                  ) : (
-                    <>
-                      <Title order={5}>Ответ AI:</Title>
-                      <Text style={{ whiteSpace: 'pre-wrap' }}>{descriptionAiState.data ?? ''}</Text>
-                      {!!descriptionAiState.data && (
-                        <>
-                          <Divider />
-                          <Group align="flex-start" grow>
-                            <Stack gap={6}>
-                              <Text fw={600} size="sm">
-                                Было
-                              </Text>
-                              <Paper withBorder p="sm" radius="md">
-                                <Text style={{ whiteSpace: 'pre-wrap' }}>{descriptionAiBeforeText || '—'}</Text>
-                              </Paper>
-                            </Stack>
-                            <Stack gap={6}>
-                              <Text fw={600} size="sm">
-                                Стало
-                              </Text>
-                              <Paper withBorder p="sm" radius="md">
-                                <DiffText before={descriptionAiBeforeText || ''} after={descriptionAiState.data} />
-                              </Paper>
-                            </Stack>
-                          </Group>
-                        </>
-                      )}
-                      <Group justify="flex-start">
-                        <Button
-                          onClick={() => {
-                            form.setFieldValue('description', descriptionAiState.data ?? '');
-                            descriptionAiState.setIsOpen(false);
-                          }}
-                          disabled={!descriptionAiState.data}
-                        >
-                          Применить
-                        </Button>
-                        <Button variant="default" onClick={() => descriptionAiState.setIsOpen(false)}>
-                          Закрыть
-                        </Button>
+                      <Divider />
+                      <Group align="flex-start" grow>
+                        <Stack gap={6}>
+                          <Text fw={600} size="sm">
+                            Было
+                          </Text>
+                          <Paper withBorder p="sm" radius="md">
+                            <Text style={{ whiteSpace: 'pre-wrap' }}>{descriptionAiBeforeText || '—'}</Text>
+                          </Paper>
+                        </Stack>
+                        <Stack gap={6}>
+                          <Text fw={600} size="sm">
+                            Стало
+                          </Text>
+                          <Paper withBorder p="sm" radius="md">
+                            <DiffText before={descriptionAiBeforeText || ''} after={descriptionAiState.data} />
+                          </Paper>
+                        </Stack>
                       </Group>
                     </>
                   )}
-                </Stack>
-              </Popover.Dropdown>
-            </Popover>
+                  <AiPopoverActions
+                    onApply={() => {
+                      form.setFieldValue('description', descriptionAiState.data ?? '');
+                      descriptionAiState.setIsOpen(false);
+                    }}
+                    onClose={() => descriptionAiState.setIsOpen(false)}
+                    isApplyDisabled={!descriptionAiState.data}
+                  />
+                </>
+              )}
+            </AiSuggestionPopover>
           </Stack>
 
           <Group justify="flex-start" mt="sm">
