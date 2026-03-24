@@ -17,14 +17,12 @@ pnpm install
 
 ```bash
 pnpm dev
-или
 ```
+или
 ```bash
 pnpm run dev
 ```
-
-Эквивалентно:
-
+или
 ```bash
 pnpm run dev:gigachat
 ```
