@@ -161,9 +161,16 @@ export default function () {
             <Divider my="md" />
 
             <Group align='flex-start'>
-                <img width={480} height={360} src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQE7Ui111Q0ppxCJctMroRHTZyzWKB28EV8sg&s"
-                    alt="" style={{ objectFit: "cover" }} />
-
+                <Stack>
+                    <img width={480} height={360} src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQE7Ui111Q0ppxCJctMroRHTZyzWKB28EV8sg&s"
+                        alt="" style={{ objectFit: "cover" }} />
+                    <Group justify="space-between">
+                        {[...new Array(4)].map((_, index) => (
+                            <img key={index} width={100} height={70} src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQE7Ui111Q0ppxCJctMroRHTZyzWKB28EV8sg&s"
+                                alt="" style={{ objectFit: "cover" }} />
+                        ))}
+                    </Group>
+                </Stack>
                 <Stack w={500}>
                     {getAdQuery.data?.data.needsRevision && (
                         <Alert radius={"md"} color='yellow' icon={<MdInfo />} title={'Требуются доработки'} >
