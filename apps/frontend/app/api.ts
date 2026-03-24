@@ -18,10 +18,7 @@ export type AiPriceSuggestionResponse = {
   text: string;
 };
 
-export async function aiSuggestPrice(
-  input: AiPriceSuggestionInput,
-  signal?: AbortSignal,
-): Promise<AiPriceSuggestionResponse> {
+export async function aiSuggestPrice(input: AiPriceSuggestionInput, signal?: AbortSignal): Promise<AiPriceSuggestionResponse> {
   const prompt = [
     `Определи рыночную цену для объявления.`,
     `Дай ответ в 3-4 строках с диапазонами цен в рублях.`,
@@ -46,12 +43,7 @@ export async function aiSuggestPrice(
     { signal },
   );
 
-  const text =
-    typeof res.data?.response === 'string'
-      ? res.data.response
-      : typeof res.data === 'string'
-        ? res.data
-        : JSON.stringify(res.data);
+  const text = typeof res.data?.response === 'string' ? res.data.response : typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
 
   return { text };
 }
@@ -67,10 +59,7 @@ export type AiDescriptionSuggestionResponse = {
   text: string;
 };
 
-export async function aiSuggestDescription(
-  input: AiDescriptionSuggestionInput,
-  signal?: AbortSignal,
-): Promise<AiDescriptionSuggestionResponse> {
+export async function aiSuggestDescription(input: AiDescriptionSuggestionInput, signal?: AbortSignal): Promise<AiDescriptionSuggestionResponse> {
   const hasDescription = Boolean(input.description?.trim());
 
   const prompt = [
@@ -96,12 +85,7 @@ export async function aiSuggestDescription(
     { signal },
   );
 
-  const text =
-    typeof res.data?.response === 'string'
-      ? res.data.response
-      : typeof res.data === 'string'
-        ? res.data
-        : JSON.stringify(res.data);
+  const text = typeof res.data?.response === 'string' ? res.data.response : typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
 
   return { text };
 }
@@ -123,10 +107,7 @@ export type AiChatAboutItemInput = {
   messages: AiChatMessage[];
 };
 
-export async function aiChatAboutItem(
-  input: AiChatAboutItemInput,
-  signal?: AbortSignal,
-): Promise<{ text: string }> {
+export async function aiChatAboutItem(input: AiChatAboutItemInput, signal?: AbortSignal): Promise<{ text: string }> {
   const system = [
     `Ты помощник по созданию объявлений.`,
     `Отвечай по-русски, кратко и по делу.`,

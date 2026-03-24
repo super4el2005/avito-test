@@ -1,7 +1,4 @@
-export const extractErrorMessage = (
-  error: unknown,
-  fallbackMessage: string,
-): string => {
+export const extractErrorMessage = (error: unknown, fallbackMessage: string): string => {
   if (
     typeof error === 'object' &&
     error !== null &&

@@ -34,7 +34,7 @@ import { Link } from 'react-router';
 import { type Item, ITEM_CATEGORIES, type ItemSortColumn, type SortDirection } from '@ads/shared';
 
 import { apiAds } from '~/api';
-import { useUiPreference , useUrlSearchState} from '~/lib';
+import { useUiPreference, useUrlSearchState } from '~/lib';
 
 type Category = (typeof ITEM_CATEGORIES)[keyof typeof ITEM_CATEGORIES];
 const CATEGORIES_TRANSLATE = {
@@ -47,9 +47,18 @@ const CATEGORIES_FORM: {
   value: Category;
   label: (typeof CATEGORIES_TRANSLATE)[Category];
 }[] = [
-  { value: ITEM_CATEGORIES.AUTO, label: CATEGORIES_TRANSLATE[ITEM_CATEGORIES.AUTO] },
-  { value: ITEM_CATEGORIES.REAL_ESTATE, label: CATEGORIES_TRANSLATE[ITEM_CATEGORIES.REAL_ESTATE] },
-  { value: ITEM_CATEGORIES.ELECTRONICS, label: CATEGORIES_TRANSLATE[ITEM_CATEGORIES.ELECTRONICS] },
+  {
+    value: ITEM_CATEGORIES.AUTO,
+    label: CATEGORIES_TRANSLATE[ITEM_CATEGORIES.AUTO],
+  },
+  {
+    value: ITEM_CATEGORIES.REAL_ESTATE,
+    label: CATEGORIES_TRANSLATE[ITEM_CATEGORIES.REAL_ESTATE],
+  },
+  {
+    value: ITEM_CATEGORIES.ELECTRONICS,
+    label: CATEGORIES_TRANSLATE[ITEM_CATEGORIES.ELECTRONICS],
+  },
 ];
 
 type SortFormValue = `${ItemSortColumn}:${SortDirection}`;
@@ -90,8 +99,7 @@ type ResponseAds = {
 };
 
 const LIMIT_ADS = 10;
-const DEFAULT_AD_IMAGE =
-  'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQE7Ui111Q0ppxCJctMroRHTZyzWKB28EV8sg&s';
+const DEFAULT_AD_IMAGE = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQE7Ui111Q0ppxCJctMroRHTZyzWKB28EV8sg&s';
 
 const getAdsPlural = (n: number) => {
   const forms = ['объявление', 'объявления', 'объявлений'];
@@ -109,15 +117,7 @@ type AdCardProps = {
 };
 
 const AdGridCard = memo(({ ad, prioritizeImage = false }: AdCardProps) => (
-  <Card
-    h={300}
-    shadow="sm"
-    padding="lg"
-    radius="md"
-    withBorder
-    component={Link}
-    to={`/ads/${ad.id}`}
-  >
+  <Card h={300} shadow="sm" padding="lg" radius="md" withBorder component={Link} to={`/ads/${ad.id}`}>
     <Card.Section>
       <Image
         src={DEFAULT_AD_IMAGE}
@@ -180,7 +180,7 @@ const AdListCard = memo(({ ad, prioritizeImage = false }: AdCardProps) => (
 AdListCard.displayName = 'AdListCard';
 
 export default function () {
-  const { values: searchState, setValues: setSearchState } = useUrlSearchState({
+  const searchStateUrl = useUrlSearchState({
     debounceMs: 500,
     fromSearchParams: (params) => ({
       q: params.get('q') || '',
@@ -202,7 +202,7 @@ export default function () {
   });
   const [isUiTransitionPending, startUiTransition] = useTransition();
 
-  const deferredSearchState = useDeferredValue(searchState);
+  const deferredSearchState = useDeferredValue(searchStateUrl.values);
   const sortValue = deferredSearchState.sort || 'createdAt:asc';
   const [sortColumn = 'createdAt', sortDirection = 'asc'] = sortValue.split(':');
   const page = Math.max(1, Number(deferredSearchState.page) || 1);
@@ -227,10 +227,10 @@ export default function () {
   });
 
   const form = useForm({
-    initialValues: searchState,
+    initialValues: searchStateUrl.values,
     onValuesChange: (values) => {
       startUiTransition(() => {
-        setSearchState(values);
+        searchStateUrl.setValues(values);
       });
     },
   });
@@ -239,8 +239,7 @@ export default function () {
   const totalPagingPages = Math.ceil(totalAds / LIMIT_ADS);
   const ads = useMemo(() => getAdsQuery.data?.data.items ?? [], [getAdsQuery.data?.data.items]);
 
-  const isDataLoading =
-    getAdsQuery.isPlaceholderData || (getAdsQuery.isLoading && !getAdsQuery.data);
+  const isDataLoading = getAdsQuery.isPlaceholderData || (getAdsQuery.isLoading && !getAdsQuery.data);
   const isFullyForm = form.values.categories.length || form.values.needsRevision || form.values.q;
 
   return (
@@ -263,12 +262,7 @@ export default function () {
               getAdsQuery.isLoading || isUiTransitionPending ? (
                 <Loader size={20} />
               ) : form.values.q ? (
-                <ActionIcon
-                  onClick={() => form.setFieldValue('q', '')}
-                  variant="light"
-                  color="gray"
-                  aria-label="Settings"
-                >
+                <ActionIcon onClick={() => form.setFieldValue('q', '')} variant="light" color="gray" aria-label="Settings">
                   <MdOutlineClear size={20} />
                 </ActionIcon>
               ) : (
@@ -307,14 +301,7 @@ export default function () {
               <MdFormatListBulleted size={20} />
             </ActionIcon>
           </ActionIcon.Group>
-          <Select
-            w={260}
-            radius="md"
-            key={form.key('sort')}
-            {...form.getInputProps('sort')}
-            data={SORT_FORM}
-            allowDeselect={false}
-          />
+          <Select w={260} radius="md" key={form.key('sort')} {...form.getInputProps('sort')} data={SORT_FORM} allowDeselect={false} />
         </Group>
         <Group align="flex-start">
           <Stack w={200}>
@@ -323,17 +310,10 @@ export default function () {
               <Accordion.Item value={'category'}>
                 <Accordion.Control>Категория</Accordion.Control>
                 <Accordion.Panel>
-                  <Checkbox.Group
-                    key={form.key('categories')}
-                    {...form.getInputProps('categories')}
-                  >
+                  <Checkbox.Group key={form.key('categories')} {...form.getInputProps('categories')}>
                     <Stack mt="xs">
                       {CATEGORIES_FORM.map((category) => (
-                        <Checkbox
-                          key={category.value}
-                          value={category.value}
-                          label={category.label}
-                        />
+                        <Checkbox key={category.value} value={category.value} label={category.label} />
                       ))}
                     </Stack>
                   </Checkbox.Group>
@@ -361,17 +341,11 @@ export default function () {
             </Button>
           </Stack>
           <Stack flex={1}>
-            {!getAdsQuery.data?.data.items.length && !getAdsQuery.isLoading && (
-              <Alert icon={<MdInfo />} title="Ничего не найдено"></Alert>
-            )}
+            {!getAdsQuery.data?.data.items.length && !getAdsQuery.isLoading && <Alert icon={<MdInfo />} title="Ничего не найдено"></Alert>}
             {getAdsQuery.isError && <Alert color="red" icon={<MdInfo />} title="Ошибка"></Alert>}
             {viewMode === 'grid' && (
               <SimpleGrid cols={5} h={650}>
-                {!isDataLoading &&
-                  !!ads.length &&
-                  ads.map((ad, index) => (
-                    <AdGridCard key={ad.id} ad={ad} prioritizeImage={index === 0} />
-                  ))}
+                {!isDataLoading && !!ads.length && ads.map((ad, index) => <AdGridCard key={ad.id} ad={ad} prioritizeImage={index === 0} />)}
                 {isDataLoading &&
                   [...new Array(LIMIT_ADS)].map((_, id) => (
                     <Card key={id} h={320} shadow="sm" padding="lg" radius="md" withBorder>
@@ -388,11 +362,7 @@ export default function () {
             {viewMode === 'list' && (
               <ScrollArea h={650}>
                 <Stack>
-                  {!isDataLoading &&
-                    !!ads.length &&
-                    ads.map((ad, index) => (
-                      <AdListCard key={ad.id} ad={ad} prioritizeImage={index === 0} />
-                    ))}
+                  {!isDataLoading && !!ads.length && ads.map((ad, index) => <AdListCard key={ad.id} ad={ad} prioritizeImage={index === 0} />)}
                   {isDataLoading &&
                     [...new Array(LIMIT_ADS)].map((_, id) => (
                       <Card key={id} h={140} shadow="sm" radius="md" p={0} withBorder>

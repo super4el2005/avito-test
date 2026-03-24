@@ -1,15 +1,4 @@
-import {
-  Alert,
-  Button,
-  Container,
-  Divider,
-  Group,
-  List,
-  Skeleton,
-  Stack,
-  Text,
-  Title,
-} from '@mantine/core';
+import { Alert, Button, Container, Divider, Group, List, Skeleton, Stack, Text, Title } from '@mantine/core';
 
 import { useQuery } from '@tanstack/react-query';
 
@@ -64,9 +53,9 @@ const TYPE_VALUE_TRANSLATIONS_BY_CATEGORY: Record<string, Record<string, string>
     room: 'Комната',
   },
   [ITEM_CATEGORIES.ELECTRONICS]: {
-  phone: 'Телефон',
-  laptop: 'Ноутбук',
-  misc: 'Разное',
+    phone: 'Телефон',
+    laptop: 'Ноутбук',
+    misc: 'Разное',
   },
 };
 
@@ -106,11 +95,7 @@ const translateParamLabel = (key: string, category?: Item['category']): string =
   return translateByMap(key, PARAM_LABEL_TRANSLATIONS);
 };
 
-const translateParamValue = (
-  key: string,
-  value: unknown,
-  category?: Item['category'],
-): string => {
+const translateParamValue = (key: string, value: unknown, category?: Item['category']): string => {
   const valueKey = String(value);
 
   if (key === 'type' && category) {
@@ -189,12 +174,7 @@ export default function () {
 
       <Group mt={12} justify="space-between">
         <Group>
-          <Button
-            leftSection={<MdArrowBack size={20} />}
-            variant="light"
-            component={Link}
-            to="/ads"
-          >
+          <Button leftSection={<MdArrowBack size={20} />} variant="light" component={Link} to="/ads">
             Назад
           </Button>
           <Button component={Link} to={`/ads/${params.id}/edit`} rightSection={<MdEdit />}>
@@ -239,9 +219,7 @@ export default function () {
                   <List withPadding listStyleType="disc">
                     {getAdQuery.data?.data.missingParams.length ? (
                       getAdQuery.data?.data.missingParams.map((param) => (
-                        <List.Item key={param}>
-                          {translateParamLabel(param, getAdQuery.data?.data.category)}
-                        </List.Item>
+                        <List.Item key={param}>{translateParamLabel(param, getAdQuery.data?.data.category)}</List.Item>
                       ))
                     ) : (
                       <List.Item>Не заполнено описание</List.Item>
@@ -274,11 +252,7 @@ export default function () {
       <Title order={3} my={10}>
         Описание
       </Title>
-      {getAdQuery.data?.data.description ? (
-        <Text w={480}>{getAdQuery.data?.data.description}</Text>
-      ) : (
-        <Text c="dimmed">Отсутствует</Text>
-      )}
+      {getAdQuery.data?.data.description ? <Text w={480}>{getAdQuery.data?.data.description}</Text> : <Text c="dimmed">Отсутствует</Text>}
     </Container>
   );
 }

@@ -14,9 +14,7 @@ const createWrapper = () => {
     },
   });
 
-  return ({ children }: PropsWithChildren) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  );
+  return ({ children }: PropsWithChildren) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 };
 
 describe('useAsyncPopoverRequest', () => {

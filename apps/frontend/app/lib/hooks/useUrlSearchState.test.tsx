@@ -14,9 +14,7 @@ type SearchState = {
 };
 
 const wrapper = ({ children }: PropsWithChildren) => (
-  <MemoryRouter initialEntries={['/?q=phone&page=2&categories=auto&categories=electronics']}>
-    {children}
-  </MemoryRouter>
+  <MemoryRouter initialEntries={['/?q=phone&page=2&categories=auto&categories=electronics']}>{children}</MemoryRouter>
 );
 
 describe('useUrlSearchState', () => {
