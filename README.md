@@ -91,7 +91,6 @@ GIGACHAT_INSECURE_TLS=1
 
 ## Ключевые ESLint-правила
 
-- Именование файлов в `app/components`: только `kebab-case`; имя экспортируемого компонента должно совпадать с именем файла в `PascalCase`.
 - Именование файлов в `app/domain` и `app/shared`: `lower kebab-case` (например, `use-ad-edit-ai.ts`) или одно слово в нижнем регистре (например, `index.ts`).
 - Сортировка импортов и экспортов через `eslint-plugin-simple-import-sort` для стабильного и читаемого порядка.
 - Для route-файлов default export функции должен быть анонимным (`export default function () {}`).
