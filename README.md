@@ -36,7 +36,7 @@ GigaChat вызывается через backend-прокси (`/ai/gigachat/cha
 Опционально можно передать ключ через переменную окружения backend:
 
 ```bash
-GIGACHAT_AUTH_KEY=<base64(client_id:client_secret)>
+GIGACHAT_AUTH_KEY=
 ```
 
 Если переменная не задана, используется ключ, зашитый в коде.
